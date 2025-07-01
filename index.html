@@ -34,7 +34,6 @@
 
     #left-button { left: 10px; }
     #right-button { right: 10px; }
-    /* حذف زر select-station-button من التنسيق */
   </style>
 </head>
 
@@ -42,27 +41,23 @@
   <div id="map"></div>
   <div id="left-button" class="nav-button"><i class="fas fa-arrow-left"></i></div>
   <div id="right-button" class="nav-button"><i class="fas fa-arrow-right"></i></div>
-  <!-- حذف زر select-station-button من HTML -->
 
   <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js"></script>
 
   <script>
-    // إنشاء الخريطة
     const map = L.map('map', {
       center: [32.08204972125716, 35.17704914292061],
       zoom: 20,
       zoomSnap: 0.5
     });
 
-    // طبقات الخرائط الأساسية
     const esriLayer = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri'
       }
-    ).addTo(map); // مفعلة بشكل افتراضي
+    ).addTo(map);
 
     const osmLayer = L.tileLayer(
       'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -71,12 +66,10 @@
       }
     );
 
-    // إنشاء طبقات للبيانات
-    const unitsLayer = L.layerGroup();    // نقاط الوحدات
+    const unitsLayer = L.layerGroup();
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
 
-    // تحميل وعرض نقاط الوحدات من UnitstoJoin.json
     $.getJSON("UnitstoJoin.json")
       .done(function (data) {
         let first = true;
@@ -121,17 +114,14 @@
         alert("فشل تحميل UnitstoJoin.json – تأكد من المسار والبيانات.");
       });
 
-    // تحميل وعرض مضلعات القطع الأرضية Parcel.json (اختياري)
     $.getJSON("Parcel.json")
       .done(function (data) {
         const parcels = L.geoJson(data, {
-          style: function () {
-            return {
-              fillOpacity: 0.0,
-              color: "red",
-              weight: 1.5,
-              opacity: 0.9
-            };
+          style: {
+            fillOpacity: 0.0,
+            color: "red",
+            weight: 1.5,
+            opacity: 0.9
           }
         });
         parcels.addTo(parcelsLayer);
@@ -140,18 +130,15 @@
         console.warn("فشل تحميل Parcel.json (اختياري).");
       });
 
-    // تحميل وعرض مباني Building.json (اختياري)
     $.getJSON("Building.json")
       .done(function (data) {
         const buildings = L.geoJson(data, {
-          style: function () {
-            return {
-              fillColor: "brown",
-              fillOpacity: 0.7,
-              color: "brown",
-              weight: 1.5,
-              opacity: 0.9
-            };
+          style: {
+            fillColor: "brown",
+            fillOpacity: 0.7,
+            color: "brown",
+            weight: 1.5,
+            opacity: 0.9
           }
         });
         buildings.addTo(buildingsLayer);
@@ -160,23 +147,19 @@
         console.warn("فشل تحميل Building.json (اختياري).");
       });
 
-    // تعريف الخرائط الأساسية
     const baseMaps = {
       "Esri Satellite": esriLayer,
       "OpenStreetMap": osmLayer
     };
 
-    // تعريف الطبقات الإضافية القابلة للتشغيل/الإيقاف
     const overlayMaps = {
-      "Units": unitsLayer,
-      "Buildings": buildingsLayer,
-      "Parcels": parcelsLayer
+      "الوحدات الخدمية": unitsLayer,
+      "المباني": buildingsLayer,
+      "القطع الأرضية": parcelsLayer
     };
 
-    // إضافة تحكم الطبقات للخريطة
     L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
 
-    // أداة تحديد الموقع
     L.control.locate({
       position: 'topleft',
       drawCircle: false,
@@ -197,7 +180,6 @@
       }
     }).addTo(map);
 
-    // أزرار التنقل يمين ويسار
     document.getElementById('left-button').addEventListener('click', () => {
       const c = map.getCenter();
       map.panTo(L.latLng(c.lat, c.lng - 0.05));
@@ -207,7 +189,6 @@
       const c = map.getCenter();
       map.panTo(L.latLng(c.lat, c.lng + 0.05));
     });
-
   </script>
 </body>
 </html>
