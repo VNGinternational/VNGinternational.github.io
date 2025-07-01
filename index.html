@@ -153,7 +153,7 @@
     });
 
     // أحواض – حدود سوداء
-    $.getJSON("Blocks.json", function (data) {
+    $.getJSON("Block.json", function (data) {
       L.geoJson(data, {
         style: function () {
           return {
@@ -189,7 +189,7 @@
         const chargingStationLocation = L.latLng(32.082147, 35.178231);
 
         const icon = L.icon({
-          iconUrl: 'blue.png',
+          iconUrl: 'Green.png',
           iconSize: [30, 30],
           iconAnchor: [16, 32],
           popupAnchor: [0, 0]
