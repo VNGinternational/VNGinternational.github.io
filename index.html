@@ -66,7 +66,7 @@
       }
     );
 
-    const unitsLayer = L.layerGroup();
+    const UnitstoJoinLayer = L.layerGroup();
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
 
@@ -106,9 +106,9 @@
             }
           }
         });
-        units.addTo(unitsLayer);
+        units.addTo(UnitstoJoinLayer);
         unitsLayer.addTo(map);
-        map.fitBounds(units.getBounds());
+        map.fitBounds(UnitstoJoin.getBounds());
       })
       .fail(function () {
         alert("فشل تحميل UnitstoJoin.json – تأكد من المسار والبيانات.");
@@ -153,9 +153,9 @@
     };
 
     const overlayMaps = {
-      "الوحدات الخدمية": unitsLayer,
-      "المباني": buildingsLayer,
-      "القطع الأرضية": parcelsLayer
+      "Units to join ": UnitstoJoinLayer,
+      "Buildings": buildingsLayer,
+      "Parcels": parcelsLayer
     };
 
     L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
@@ -168,10 +168,6 @@
       markerStyle: { weight: 1, opacity: 0.8, fillOpacity: 0.8 },
       icon: 'fa fa-location-arrow',
       metric: true,
-      strings: {
-        title: "Show location",
-        popup: "You are within {distance} {unit} from this point",
-        outsideMapBoundsMsg: "You seem located outside the boundaries of the map"
       },
       locateOptions: {
         maxZoom: 40,
