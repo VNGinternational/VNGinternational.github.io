@@ -75,7 +75,7 @@
     const unitsLayer = L.layerGroup();    // نقاط الوحدات
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
-    const blocksLayer = L.layerGroup();   // مضلعات البلوكات
+    // طبقة blocksLayer حذفت
 
     // تحميل وعرض نقاط الوحدات من UnitstoJoin.json
     $.getJSON("UnitstoJoin.json")
@@ -122,27 +122,6 @@
       })
       .fail(function () {
         alert("فشل تحميل UnitstoJoin.json – تأكد من المسار والبيانات.");
-      });
-
-    // تحميل وعرض مضلعات البلوكات من Block.json
-    $.getJSON("Block.json")
-      .done(function (data) {
-        const blocks = L.geoJson(data, {
-          style: function () {
-            return {
-              fillOpacity: 0.2,
-              fillColor: "orange",
-              color: "black",
-              weight: 2,
-              opacity: 1.0
-            };
-          }
-        });
-        blocks.addTo(blocksLayer);    // نضيف مضلعات البلوكات لطبقة blocksLayer
-        // لا نضيفها مباشرة للخريطة، ننتظر تفعيلها من Layers Control
-      })
-      .fail(function () {
-        alert("فشل تحميل Block.json – تأكد من المسار والبيانات.");
       });
 
     // تحميل وعرض مضلعات القطع الأرضية Parcel.json (اختياري)
@@ -192,12 +171,11 @@
       "OpenStreetMap": osmLayer
     };
 
-    // تعريف الطبقات الإضافية القابلة للتشغيل/الإيقاف
+    // تعريف الطبقات الإضافية القابلة للتشغيل/الإيقاف بدون blocksLayer
     const overlayMaps = {
       "Units": unitsLayer,
       "Buildings": buildingsLayer,
-      "Parcels": parcelsLayer,
-      "Blocks": blocksLayer
+      "Parcels": parcelsLayer
     };
 
     // إضافة تحكم الطبقات للخريطة
