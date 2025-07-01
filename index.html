@@ -34,7 +34,7 @@
 
     #left-button { left: 10px; }
     #right-button { right: 10px; }
-    #select-station-button { top: 10px; right: 10px; }
+    /* حذف زر select-station-button من التنسيق */
   </style>
 </head>
 
@@ -42,7 +42,7 @@
   <div id="map"></div>
   <div id="left-button" class="nav-button"><i class="fas fa-arrow-left"></i></div>
   <div id="right-button" class="nav-button"><i class="fas fa-arrow-right"></i></div>
-  <div id="select-station-button" class="nav-button"><i class="fas fa-map-pin"></i></div>
+  <!-- حذف زر select-station-button من HTML -->
 
   <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -75,7 +75,6 @@
     const unitsLayer = L.layerGroup();    // نقاط الوحدات
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
-    // طبقة blocksLayer حذفت
 
     // تحميل وعرض نقاط الوحدات من UnitstoJoin.json
     $.getJSON("UnitstoJoin.json")
@@ -114,10 +113,8 @@
             }
           }
         });
-        units.addTo(unitsLayer);   // نضيف نقاط الوحدات إلى طبقة unitsLayer
-        unitsLayer.addTo(map);     // نضيف طبقة الوحدات للخريطة
-
-        // ضبط العرض ليشمل كل النقاط
+        units.addTo(unitsLayer);
+        unitsLayer.addTo(map);
         map.fitBounds(units.getBounds());
       })
       .fail(function () {
@@ -138,7 +135,6 @@
           }
         });
         parcels.addTo(parcelsLayer);
-        // لا نضيفها مباشرة للخريطة، تترك للمستخدم تفعيلها
       })
       .fail(function () {
         console.warn("فشل تحميل Parcel.json (اختياري).");
@@ -159,7 +155,6 @@
           }
         });
         buildings.addTo(buildingsLayer);
-        // لا نضيفها مباشرة للخريطة، تترك للمستخدم تفعيلها
       })
       .fail(function () {
         console.warn("فشل تحميل Building.json (اختياري).");
@@ -171,7 +166,7 @@
       "OpenStreetMap": osmLayer
     };
 
-    // تعريف الطبقات الإضافية القابلة للتشغيل/الإيقاف بدون blocksLayer
+    // تعريف الطبقات الإضافية القابلة للتشغيل/الإيقاف
     const overlayMaps = {
       "Units": unitsLayer,
       "Buildings": buildingsLayer,
@@ -213,31 +208,6 @@
       map.panTo(L.latLng(c.lat, c.lng + 0.05));
     });
 
-    // زر تحديد المحطة والمسار (الموقع الحالي -> محطة شحن)
-    document.getElementById('select-station-button').addEventListener('click', () => {
-      map.on('locationfound', function (e) {
-        const userLoc = e.latlng;
-        const stationLoc = L.latLng(32.082147, 35.178231);
-        const icon = L.icon({
-          iconUrl: 'blue.png',
-          iconSize: [30, 30],
-          iconAnchor: [16, 32],
-          popupAnchor: [0, 0]
-        });
-
-        L.marker(stationLoc, { icon }).addTo(map).bindPopup("Charging station").openPopup();
-
-        L.Routing.control({
-          waypoints: [userLoc, stationLoc],
-          routeWhileDragging: true,
-          lineOptions: {
-            styles: [{ color: 'blue', opacity: 0.7, weight: 5 }]
-          }
-        }).addTo(map);
-      });
-
-      map.locate({ setView: true, maxZoom: 16 });
-    });
   </script>
 </body>
 </html>
