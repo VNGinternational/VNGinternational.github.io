@@ -50,18 +50,19 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js"></script>
 
   <script>
+    // إنشاء الخريطة
     const map = L.map('map', {
       center: [32.08204972125716, 35.17704914292061],
       zoom: 20,
       zoomSnap: 0.5
     });
 
-    // Base map - only Esri enabled
+    // طبقات الخرائط الأساسية
     const esriLayer = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri'
       }
-    ).addTo(map); // Default active
+    ).addTo(map); // مفعلة بشكل افتراضي
 
     const osmLayer = L.tileLayer(
       'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -70,13 +71,13 @@
       }
     );
 
-    // Layers
-    const unitsLayer = L.layerGroup().addTo(map); // Default ON
+    // إنشاء طبقات للبيانات
+    const unitsLayer = L.layerGroup();    // نقاط الوحدات
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
-    const blocksLayer = L.layerGroup();
+    const blocksLayer = L.layerGroup();   // مضلعات البلوكات
 
-    // Units – Show unit info in popup
+    // تحميل وعرض نقاط الوحدات من UnitstoJoin.json
     $.getJSON("UnitstoJoin.json")
       .done(function (data) {
         let first = true;
@@ -112,74 +113,86 @@
               first = false;
             }
           }
-        }).addTo(unitsLayer);
+        });
+        units.addTo(unitsLayer);   // نضيف نقاط الوحدات إلى طبقة unitsLayer
+        unitsLayer.addTo(map);     // نضيف طبقة الوحدات للخريطة
 
+        // ضبط العرض ليشمل كل النقاط
         map.fitBounds(units.getBounds());
       })
       .fail(function () {
         alert("فشل تحميل UnitstoJoin.json – تأكد من المسار والبيانات.");
       });
 
-    // Optional: Other layers (can be added manually later)
-    $.getJSON("Block.json", function (data) {
-      L.geoJson(data, {
-        style: function () {
-          return {
-            fillOpacity: 0.0,
-            color: "black",
-            weight: 2,
-            opacity: 1.0
-          };
-        }
-      }).addTo(blocksLayer);
-    });
+    // تحميل وعرض مضلعات البلوكات من Block.json
+    $.getJSON("Block.json")
+      .done(function (data) {
+        const blocks = L.geoJson(data, {
+          style: function () {
+            return {
+              fillOpacity: 0.2,
+              fillColor: "orange",
+              color: "black",
+              weight: 2,
+              opacity: 1.0
+            };
+          }
+        });
+        blocks.addTo(blocksLayer);    // نضيف مضلعات البلوكات لطبقة blocksLayer
+        // لا نضيفها مباشرة للخريطة، ننتظر تفعيلها من Layers Control
+      })
+      .fail(function () {
+        alert("فشل تحميل Block.json – تأكد من المسار والبيانات.");
+      });
 
-    $.getJSON("Parcel.json", function (data) {
-      L.geoJson(data, {
-        style: function () {
-          return {
-            fillOpacity: 0.0,
-            color: "red",
-            weight: 1.5,
-            opacity: 0.9
-          };
-        }
-      }).addTo(parcelsLayer);
-    });
+    // تحميل وعرض مضلعات القطع الأرضية Parcel.json (اختياري)
+    $.getJSON("Parcel.json")
+      .done(function (data) {
+        const parcels = L.geoJson(data, {
+          style: function () {
+            return {
+              fillOpacity: 0.0,
+              color: "red",
+              weight: 1.5,
+              opacity: 0.9
+            };
+          }
+        });
+        parcels.addTo(parcelsLayer);
+        // لا نضيفها مباشرة للخريطة، تترك للمستخدم تفعيلها
+      })
+      .fail(function () {
+        console.warn("فشل تحميل Parcel.json (اختياري).");
+      });
 
-    $.getJSON("Block.json", function (data) {
-      L.geoJson(data, {
-        style: function () {
-          return {
-            fillOpacity: 0.0,
-            color: "black",
-            weight: 1.5,
-            opacity: 0.9
-          };
-        }
-      }).addTo(parcelsLayer);
-    });
+    // تحميل وعرض مباني Building.json (اختياري)
+    $.getJSON("Building.json")
+      .done(function (data) {
+        const buildings = L.geoJson(data, {
+          style: function () {
+            return {
+              fillColor: "brown",
+              fillOpacity: 0.7,
+              color: "brown",
+              weight: 1.5,
+              opacity: 0.9
+            };
+          }
+        });
+        buildings.addTo(buildingsLayer);
+        // لا نضيفها مباشرة للخريطة، تترك للمستخدم تفعيلها
+      })
+      .fail(function () {
+        console.warn("فشل تحميل Building.json (اختياري).");
+      });
 
-    $.getJSON("Building.json", function (data) {
-      L.geoJson(data, {
-        style: function () {
-          return {
-            fillColor: "brown",
-            fillOpacity: 0.7,
-            color: "brown",
-            weight: 1.5,
-            opacity: 0.9
-          };
-        }
-      }).addTo(buildingsLayer);
-    });
-
-    // Layers control
+    // تعريف الخرائط الأساسية
     const baseMaps = {
       "Esri Satellite": esriLayer,
       "OpenStreetMap": osmLayer
     };
 
+    // تعريف الطبقات الإضافية القابلة للتشغيل/الإيقاف
     const overlayMaps = {
       "Units": unitsLayer,
       "Buildings": buildingsLayer,
@@ -187,9 +200,10 @@
       "Blocks": blocksLayer
     };
 
+    // إضافة تحكم الطبقات للخريطة
     L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
 
-    // Location control
+    // أداة تحديد الموقع
     L.control.locate({
       position: 'topleft',
       drawCircle: false,
@@ -210,7 +224,7 @@
       }
     }).addTo(map);
 
-    // Navigation buttons
+    // أزرار التنقل يمين ويسار
     document.getElementById('left-button').addEventListener('click', () => {
       const c = map.getCenter();
       map.panTo(L.latLng(c.lat, c.lng - 0.05));
@@ -221,6 +235,7 @@
       map.panTo(L.latLng(c.lat, c.lng + 0.05));
     });
 
+    // زر تحديد المحطة والمسار (الموقع الحالي -> محطة شحن)
     document.getElementById('select-station-button').addEventListener('click', () => {
       map.on('locationfound', function (e) {
         const userLoc = e.latlng;
