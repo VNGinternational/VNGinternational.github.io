@@ -73,7 +73,7 @@
     $.getJSON("UnitstoJoin.json")
       .done(function (data) {
         let first = true;
-        const units = L.geoJson(data, {
+        const UnitstoJoin = L.geoJson(data, {
           pointToLayer: function (feature, latlng) {
             return L.circleMarker(latlng, {
               radius: 6,
@@ -106,8 +106,8 @@
             }
           }
         });
-        units.addTo(UnitstoJoinLayer);
-        unitsLayer.addTo(map);
+        UnitstoJoin.addTo(UnitstoJoinLayer);
+        UnitstoJoinLayer.addTo(map);
         map.fitBounds(UnitstoJoin.getBounds());
       })
       .fail(function () {
@@ -153,7 +153,7 @@
     };
 
     const overlayMaps = {
-      "Units to join ": UnitstoJoinLayer,
+      "Units to Join": UnitstoJoinLayer,
       "Buildings": buildingsLayer,
       "Parcels": parcelsLayer
     };
@@ -168,7 +168,6 @@
       markerStyle: { weight: 1, opacity: 0.8, fillOpacity: 0.8 },
       icon: 'fa fa-location-arrow',
       metric: true,
-      },
       locateOptions: {
         maxZoom: 40,
         enableHighAccuracy: true,
