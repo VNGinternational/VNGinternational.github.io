@@ -7,17 +7,19 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
   <style>
-    body, html {
+    body {
       margin: 0;
       height: 100%;
       width: 100%;
     }
+
     #map {
       position: absolute;
       width: 100%;
       top: 0;
-      bottom: 0;
+      bottom:  0;
     }
+
     .nav-button {
       position: absolute;
       top: 50%;
@@ -28,13 +30,44 @@
       cursor: pointer;
       z-index: 1000;
     }
-    #left-button { left: 10px; }
-    #right-button { right: 10px; }
-    #select-station-button { top: 10px; right: 10px; }
+
+    #left-button {
+      left: 10px;
+    }
+
+    #right-button {
+      right: 10px;
+    }
+
+    #select-station-button {
+      top: 10px;
+      right: 10px;
+    }
+
+    #filter-block {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1001;
+      padding: 5px;
+    }
+
+    .block-label {
+      font-weight: bold;
+      font-size: 12px;
+      color: black;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
   </style>
 </head>
 
 <body>
+  <select id="filter-block">
+    <option value="">-- Filter by Block --</option>
+  </select>
+
   <div id="map"></div>
   <div id="left-button" class="nav-button"><i class="fas fa-arrow-left"></i></div>
   <div id="right-button" class="nav-button"><i class="fas fa-arrow-right"></i></div>
@@ -52,7 +85,6 @@
       zoomSnap: 0.5
     });
 
-    // طبقات الأساس
     const esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri'
     }).addTo(map);
@@ -63,44 +95,35 @@
     });
 
     // طبقات البيانات
-    const unitsLayer = L.layerGroup();
-    const buildingsLayer = L.layerGroup();
-    const parcelsLayer = L.layerGroup();
-    const blocksLayer = L.layerGroup();
+    const unitsLayer = L.layerGroup().addTo(map);
+    const buildingsLayer = L.layerGroup().addTo(map);
+    const parcelsLayer = L.layerGroup().addTo(map);
+    const blocksLayer = L.layerGroup().addTo(map);
 
-    // حدود بلدية سلفيت
-    $.getJSON("SalfitCity.json", function (data) {
-      const goverLayer = L.geoJson(data, {
+    let allUnits = [];
+
+    // طبقة الأحواض + اسم الحوض على الخريطة
+    $.getJSON("Block.json", function (data) {
+      L.geoJson(data, {
         style: {
           fillOpacity: 0,
           color: "black",
-          weight: 1.5,
-          opacity: 0.7
+          weight: 2,
+          opacity: 1
         },
         onEachFeature: function (feature, layer) {
-          layer.bindPopup("Community: " + feature.properties.CommunityN);
+          const name = feature.properties.Block || feature.properties.Name || "N/A";
+          layer.bindPopup("Block: " + name);
+          layer.bindTooltip(name, {
+            permanent: true,
+            direction: "center",
+            className: "block-label"
+          });
         }
-      }).addTo(map);
-      map.fitBounds(goverLayer.getBounds());
+      }).addTo(blocksLayer);
     });
 
-    // طبقة الوحدات - نقاط زرقاء
-    $.getJSON("Units.json", function (data) {
-      L.geoJson(data, {
-        pointToLayer: function (feature, latlng) {
-          return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: "blue",
-            color: "blue",
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8
-          }).bindPopup("Name: " + feature.properties.name + "<br>Capacity: " + feature.properties.Capacity);
-        }
-      }).addTo(unitsLayer);
-    });
-
-    // طبقة المباني – لون بيج
+    // طبقة المباني (بيج مع تعبئة)
     $.getJSON("Building.json", function (data) {
       L.geoJson(data, {
         style: {
@@ -113,11 +136,11 @@
       }).addTo(buildingsLayer);
     });
 
-    // طبقة القطع – حدود حمراء فقط
+    // طبقة القطع (حدود حمراء)
     $.getJSON("Parcel.json", function (data) {
       L.geoJson(data, {
         style: {
-          fillOpacity: 0,
+          fillOpacity: 0.0,
           color: "red",
           weight: 1.5,
           opacity: 0.9
@@ -125,40 +148,64 @@
       }).addTo(parcelsLayer);
     });
 
-    // طبقة الأحواض (Blocks) – حدود سوداء فقط
-    $.getJSON("Block.json", function (data) {
-      L.geoJson(data, {
-        style: {
-          fillOpacity: 0,
-          color: "black",
-          weight: 2,
-          opacity: 1
-        }
-      }).addTo(blocksLayer);
+    // طبقة الوحدات (نقاط زرقاء) + فتح أول وحدة تلقائيًا + فلترة
+    $.getJSON("UnitstoJoin.json", function (data) {
+      allUnits = data.features;
+
+      // تعبئة قائمة الفلترة
+      const blockNames = [...new Set(allUnits.map(f => f.properties.Block))].sort();
+      const select = document.getElementById("filter-block");
+
+      blockNames.forEach(block => {
+        const option = document.createElement("option");
+        option.value = block;
+        option.textContent = block;
+        select.appendChild(option);
+      });
+
+      renderUnits(allUnits, true); // عرض الكل وفتح أول وحدة
     });
 
-    // إضافة جميع الطبقات للخريطة
-    unitsLayer.addTo(map);
-    buildingsLayer.addTo(map);
-    parcelsLayer.addTo(map);
-    blocksLayer.addTo(map);
+    function renderUnits(features, openFirst = false) {
+      unitsLayer.clearLayers();
+      let first = openFirst;
 
-    // قائمة الطبقات
-    const baseMaps = {
-      "Esri Satellite": esriLayer,
-      "OpenStreetMap": osmLayer
-    };
+      L.geoJson({ type: "FeatureCollection", features }, {
+        pointToLayer: function (feature, latlng) {
+          return L.circleMarker(latlng, {
+            radius: 6,
+            fillColor: "blue",
+            color: "blue",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.9
+          });
+        },
+        onEachFeature: function (feature, layer) {
+          const name = feature.properties.name || "No Name";
+          const cap = feature.properties.Capacity || "N/A";
+          layer.bindPopup("Name: " + name + "<br>Capacity: " + cap);
+          if (first) {
+            layer.openPopup();
+            first = false;
+          }
+        }
+      }).addTo(unitsLayer);
+    }
 
-    const overlayMaps = {
-      "Units (Blue Points)": unitsLayer,
-      "Buildings (Beige)": buildingsLayer,
-      "Parcels (Red Borders)": parcelsLayer,
-      "Blocks (Black Borders)": blocksLayer
-    };
+    document.getElementById("filter-block").addEventListener("change", function () {
+      const selected = this.value;
+      if (selected) {
+        const filtered = allUnits.filter(f => f.properties.Block === selected);
+        renderUnits(filtered);
+      } else {
+        renderUnits(allUnits);
+      }
+    });
 
-    L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
+    // التحكم في الموقع والتكبير
+    L.control.scale({ position: 'bottomright', metric: true, imperial: false }).addTo(map);
 
-    // إضافة تحكم بالموقع
     L.control.locate({
       position: 'topleft',
       drawCircle: false,
@@ -171,52 +218,71 @@
       strings: {
         title: "Show location",
         popup: "You are within {distance} {unit} from this point",
-        outsideMapBoundsMsg: "You seem located outside the map"
+        outsideMapBoundsMsg: "You seem located outside the boundaries of the map"
       },
       locateOptions: {
         maxZoom: 40,
-        enableHighAccuracy: true
+        initialZoomLevel: 40,
+        enableHighAccuracy: true,
+        maximumAge: 10000,
+        timeout: 10000
       }
     }).addTo(map);
 
-    // أزرار التحريك
-    function panLeft() {
-      const center = map.getCenter();
-      map.panTo([center.lat, center.lng - 0.05]);
-    }
+    // الطبقات
+    const baseMaps = {
+      "Esri Satellite": esriLayer,
+      "OpenStreetMap": osmLayer
+    };
 
-    function panRight() {
-      const center = map.getCenter();
-      map.panTo([center.lat, center.lng + 0.05]);
-    }
+    const overlayMaps = {
+      "Units": unitsLayer,
+      "Buildings": buildingsLayer,
+      "Parcels": parcelsLayer,
+      "Blocks": blocksLayer
+    };
 
-    function selectChargingStation() {
+    L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
+
+    // أزرار تنقل
+    document.getElementById('left-button').addEventListener('click', () => {
+      const center = map.getCenter();
+      map.panTo(L.latLng(center.lat, center.lng - 0.05));
+    });
+
+    document.getElementById('right-button').addEventListener('click', () => {
+      const center = map.getCenter();
+      map.panTo(L.latLng(center.lat, center.lng + 0.05));
+    });
+
+    document.getElementById('select-station-button').addEventListener('click', () => {
       map.on('locationfound', function (e) {
         const userLocation = e.latlng;
-        const station = L.latLng(32.082147, 35.178231);
+        const targetLocation = L.latLng(32.082147, 35.178231);
+
         const icon = L.icon({
-          iconUrl: 'Green.png',
+          iconUrl: 'blue.png',
           iconSize: [30, 30],
-          iconAnchor: [16, 32]
+          iconAnchor: [16, 32],
+          popupAnchor: [0, 0]
         });
 
-        L.marker(station, { icon }).addTo(map)
-          .bindPopup("Charging Station").openPopup();
+        L.marker(targetLocation, { icon: icon })
+          .addTo(map)
+          .bindPopup("Show the destination for a car charging station")
+          .openPopup();
 
         L.Routing.control({
-          waypoints: [userLocation, station],
+          waypoints: [userLocation, targetLocation],
           routeWhileDragging: true,
-          lineOptions: { styles: [{ color: 'blue', opacity: 0.7, weight: 5 }] }
+          lineOptions: {
+            styles: [{ color: 'blue', opacity: 0.7, weight: 5 }]
+          }
         }).addTo(map);
       });
 
       map.locate({ setView: true, maxZoom: 16 });
-    }
-
-    // زر التحكم
-    document.getElementById('left-button').addEventListener('click', panLeft);
-    document.getElementById('right-button').addEventListener('click', panRight);
-    document.getElementById('select-station-button').addEventListener('click', selectChargingStation);
+    });
   </script>
 </body>
 </html>
