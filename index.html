@@ -7,19 +7,17 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
   <style>
-    body {
+    body, html {
       margin: 0;
       height: 100%;
       width: 100%;
     }
-
     #map {
       position: absolute;
       width: 100%;
       top: 0;
       bottom: 0;
     }
-
     .nav-button {
       position: absolute;
       top: 50%;
@@ -30,19 +28,9 @@
       cursor: pointer;
       z-index: 1000;
     }
-
-    #left-button {
-      left: 10px;
-    }
-
-    #right-button {
-      right: 10px;
-    }
-
-    #select-station-button {
-      top: 10px;
-      right: 10px;
-    }
+    #left-button { left: 10px; }
+    #right-button { right: 10px; }
+    #select-station-button { top: 10px; right: 10px; }
   </style>
 </head>
 
@@ -58,14 +46,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.js"></script>
 
   <script>
-    const mapOptions = {
-      zoomSnap: 0.5,
+    const map = L.map("map", {
       center: [32.08204972125716, 35.17704914292061],
       zoom: 20,
-    };
+      zoomSnap: 0.5
+    });
 
-    const map = L.map("map", mapOptions);
-
+    // طبقات الأساس
     const esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri'
     }).addTo(map);
@@ -75,93 +62,77 @@
       maxZoom: 19
     });
 
-    L.control.scale({ position: 'bottomright', metric: true, imperial: false }).addTo(map);
-
-    // طبقات بيانات
+    // طبقات البيانات
     const unitsLayer = L.layerGroup();
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
     const blocksLayer = L.layerGroup();
 
-    // Governorate حدود مدينة سلفيت (ثابتة)
-    $.getJSON("SalfitCity.json", function (SC) {
-      const goverLayer = L.geoJson(SC, {
-        style: () => ({
-          fillColor: "",
-          fillOpacity: 0.0,
+    // حدود بلدية سلفيت
+    $.getJSON("SalfitCity.json", function (data) {
+      const goverLayer = L.geoJson(data, {
+        style: {
+          fillOpacity: 0,
           color: "black",
           weight: 1.5,
           opacity: 0.7
-        }),
+        },
         onEachFeature: function (feature, layer) {
-          layer.on('click', function () {
-            alert("Governorate: " + feature.properties.CommunityN);
-          });
+          layer.bindPopup("Community: " + feature.properties.CommunityN);
         }
       }).addTo(map);
       map.fitBounds(goverLayer.getBounds());
     });
 
-    // وحدات
+    // طبقة الوحدات - نقاط زرقاء
     $.getJSON("Units.json", function (data) {
       L.geoJson(data, {
         pointToLayer: function (feature, latlng) {
-          return L.marker(latlng, {
-            icon: L.icon({
-              iconUrl: 'blue.png',
-              iconSize: [30, 30],
-              iconAnchor: [16, 32],
-              popupAnchor: [0, 0]
-            })
-          });
-        },
-        onEachFeature: function (feature, layer) {
-          layer.on('click', function () {
-            alert("Capacity: " + feature.properties.Capacity + "\nLocation: " + feature.properties.name);
-          });
+          return L.circleMarker(latlng, {
+            radius: 6,
+            fillColor: "blue",
+            color: "blue",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+          }).bindPopup("Name: " + feature.properties.name + "<br>Capacity: " + feature.properties.Capacity);
         }
       }).addTo(unitsLayer);
     });
 
-    // مباني – لون بيج
+    // طبقة المباني – لون بيج
     $.getJSON("Building.json", function (data) {
       L.geoJson(data, {
-        style: function () {
-          return {
-            fillColor: "#f5f5dc",
-            fillOpacity: 0.7,
-            color: "#d2b48c",
-            weight: 1.5,
-            opacity: 0.9
-          };
+        style: {
+          fillColor: "#f5f5dc",
+          fillOpacity: 0.7,
+          color: "#d2b48c",
+          weight: 1.5,
+          opacity: 0.9
         }
       }).addTo(buildingsLayer);
     });
 
-    // قطع – حدود حمراء
+    // طبقة القطع – حدود حمراء فقط
     $.getJSON("Parcel.json", function (data) {
       L.geoJson(data, {
-        style: function () {
-          return {
-            fillOpacity: 0.0,
-            color: "red",
-            weight: 1.5,
-            opacity: 0.9
-          };
+        style: {
+          fillOpacity: 0,
+          color: "red",
+          weight: 1.5,
+          opacity: 0.9
         }
       }).addTo(parcelsLayer);
     });
 
-    // أحواض – حدود سوداء
-    $.getJSON("Block.json", function (data) {
+    // طبقة الأحواض (Blocks) – حدود سوداء فقط
+    $.getJSON("Blocks.json", function (data) {
       L.geoJson(data, {
-        style: function () {
-          return {
-            fillOpacity: 0.0,
-            color: "black",
-            weight: 2,
-            opacity: 1.0
-          };
+        style: {
+          fillOpacity: 0,
+          color: "black",
+          weight: 2,
+          opacity: 1
         }
       }).addTo(blocksLayer);
     });
@@ -172,62 +143,22 @@
     parcelsLayer.addTo(map);
     blocksLayer.addTo(map);
 
-    // أزرار تنقل
-    function panLeft() {
-      const currentCenter = map.getCenter();
-      map.panTo(L.latLng(currentCenter.lat, currentCenter.lng - 0.05));
-    }
-
-    function panRight() {
-      const currentCenter = map.getCenter();
-      map.panTo(L.latLng(currentCenter.lat, currentCenter.lng + 0.05));
-    }
-
-    function selectChargingStation() {
-      map.on('locationfound', function (e) {
-        const userLocation = e.latlng;
-        const chargingStationLocation = L.latLng(32.082147, 35.178231);
-
-        const icon = L.icon({
-          iconUrl: 'Green.png',
-          iconSize: [30, 30],
-          iconAnchor: [16, 32],
-          popupAnchor: [0, 0]
-        });
-
-        L.marker(chargingStationLocation, { icon: icon })
-          .addTo(map)
-          .bindPopup("Show the destination for a car charging station")
-          .openPopup();
-
-        L.Routing.control({
-          waypoints: [userLocation, chargingStationLocation],
-          routeWhileDragging: true,
-          lineOptions: {
-            styles: [{ color: 'blue', opacity: 0.7, weight: 5 }]
-          }
-        }).addTo(map);
-      });
-
-      map.locate({ setView: true, maxZoom: 16 });
-    }
-
-    // خريطة الأساس
+    // قائمة الطبقات
     const baseMaps = {
       "Esri Satellite": esriLayer,
       "OpenStreetMap": osmLayer
     };
 
-    // الطبقات الإضافية
     const overlayMaps = {
-      "Units": unitsLayer,
-      "Buildings": buildingsLayer,
-      "Parcels": parcelsLayer,
-      "Blocks": blocksLayer
+      "Units (Blue Points)": unitsLayer,
+      "Buildings (Beige)": buildingsLayer,
+      "Parcels (Red Borders)": parcelsLayer,
+      "Blocks (Black Borders)": blocksLayer
     };
 
     L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
 
+    // إضافة تحكم بالموقع
     L.control.locate({
       position: 'topleft',
       drawCircle: false,
@@ -240,17 +171,49 @@
       strings: {
         title: "Show location",
         popup: "You are within {distance} {unit} from this point",
-        outsideMapBoundsMsg: "You seem located outside the boundaries of the map"
+        outsideMapBoundsMsg: "You seem located outside the map"
       },
       locateOptions: {
         maxZoom: 40,
-        initialZoomLevel: 40,
-        enableHighAccuracy: true,
-        maximumAge: 10000,
-        timeout: 10000
+        enableHighAccuracy: true
       }
     }).addTo(map);
 
+    // أزرار التحريك
+    function panLeft() {
+      const center = map.getCenter();
+      map.panTo([center.lat, center.lng - 0.05]);
+    }
+
+    function panRight() {
+      const center = map.getCenter();
+      map.panTo([center.lat, center.lng + 0.05]);
+    }
+
+    function selectChargingStation() {
+      map.on('locationfound', function (e) {
+        const userLocation = e.latlng;
+        const station = L.latLng(32.082147, 35.178231);
+        const icon = L.icon({
+          iconUrl: 'Green.png',
+          iconSize: [30, 30],
+          iconAnchor: [16, 32]
+        });
+
+        L.marker(station, { icon }).addTo(map)
+          .bindPopup("Charging Station").openPopup();
+
+        L.Routing.control({
+          waypoints: [userLocation, station],
+          routeWhileDragging: true,
+          lineOptions: { styles: [{ color: 'blue', opacity: 0.7, weight: 5 }] }
+        }).addTo(map);
+      });
+
+      map.locate({ setView: true, maxZoom: 16 });
+    }
+
+    // زر التحكم
     document.getElementById('left-button').addEventListener('click', panLeft);
     document.getElementById('right-button').addEventListener('click', panRight);
     document.getElementById('select-station-button').addEventListener('click', selectChargingStation);
