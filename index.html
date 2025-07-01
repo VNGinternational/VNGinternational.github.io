@@ -77,9 +77,13 @@
 
     L.control.scale({ position: 'bottomright', metric: true, imperial: false }).addTo(map);
 
-    const electricCarsLayer = L.layerGroup().addTo(map);
+    // طبقات بيانات
+    const unitsLayer = L.layerGroup();
+    const buildingsLayer = L.layerGroup();
+    const parcelsLayer = L.layerGroup();
+    const blocksLayer = L.layerGroup();
 
-    // Governorate
+    // Governorate حدود مدينة سلفيت (ثابتة)
     $.getJSON("SalfitCity.json", function (SC) {
       const goverLayer = L.geoJson(SC, {
         style: () => ({
@@ -95,13 +99,12 @@
           });
         }
       }).addTo(map);
-
       map.fitBounds(goverLayer.getBounds());
     });
 
-    // Units (blue icons)
-    $.getJSON("Units.json", function (F) {
-      L.geoJson(F, {
+    // وحدات
+    $.getJSON("Units.json", function (data) {
+      L.geoJson(data, {
         pointToLayer: function (feature, latlng) {
           return L.marker(latlng, {
             icon: L.icon({
@@ -117,10 +120,10 @@
             alert("Capacity: " + feature.properties.Capacity + "\nLocation: " + feature.properties.name);
           });
         }
-      }).addTo(electricCarsLayer);
+      }).addTo(unitsLayer);
     });
 
-    // Buildings – beige with fill
+    // مباني – لون بيج
     $.getJSON("Building.json", function (data) {
       L.geoJson(data, {
         style: function () {
@@ -132,10 +135,10 @@
             opacity: 0.9
           };
         }
-      }).addTo(map);
+      }).addTo(buildingsLayer);
     });
 
-    // Parcels – red borders only
+    // قطع – حدود حمراء
     $.getJSON("Parcel.json", function (data) {
       L.geoJson(data, {
         style: function () {
@@ -146,10 +149,10 @@
             opacity: 0.9
           };
         }
-      }).addTo(map);
+      }).addTo(parcelsLayer);
     });
 
-    // Blocks (JBLOCK) – black borders only
+    // أحواض – حدود سوداء
     $.getJSON("Blocks.json", function (data) {
       L.geoJson(data, {
         style: function () {
@@ -160,20 +163,24 @@
             opacity: 1.0
           };
         }
-      }).addTo(map);
+      }).addTo(blocksLayer);
     });
 
-    // Buttons & Navigation
+    // إضافة جميع الطبقات للخريطة
+    unitsLayer.addTo(map);
+    buildingsLayer.addTo(map);
+    parcelsLayer.addTo(map);
+    blocksLayer.addTo(map);
+
+    // أزرار تنقل
     function panLeft() {
       const currentCenter = map.getCenter();
-      const newCenter = L.latLng(currentCenter.lat, currentCenter.lng - 0.05);
-      map.panTo(newCenter);
+      map.panTo(L.latLng(currentCenter.lat, currentCenter.lng - 0.05));
     }
 
     function panRight() {
       const currentCenter = map.getCenter();
-      const newCenter = L.latLng(currentCenter.lat, currentCenter.lng + 0.05);
-      map.panTo(newCenter);
+      map.panTo(L.latLng(currentCenter.lat, currentCenter.lng + 0.05));
     }
 
     function selectChargingStation() {
@@ -181,14 +188,14 @@
         const userLocation = e.latlng;
         const chargingStationLocation = L.latLng(32.082147, 35.178231);
 
-        const chargingStationIcon = L.icon({
+        const icon = L.icon({
           iconUrl: 'blue.png',
           iconSize: [30, 30],
           iconAnchor: [16, 32],
           popupAnchor: [0, 0]
         });
 
-        const marker = L.marker(chargingStationLocation, { icon: chargingStationIcon })
+        L.marker(chargingStationLocation, { icon: icon })
           .addTo(map)
           .bindPopup("Show the destination for a car charging station")
           .openPopup();
@@ -205,13 +212,18 @@
       map.locate({ setView: true, maxZoom: 16 });
     }
 
+    // خريطة الأساس
     const baseMaps = {
       "Esri Satellite": esriLayer,
       "OpenStreetMap": osmLayer
     };
 
+    // الطبقات الإضافية
     const overlayMaps = {
-      "Electric Cars": electricCarsLayer
+      "Units": unitsLayer,
+      "Buildings": buildingsLayer,
+      "Parcels": parcelsLayer,
+      "Blocks": blocksLayer
     };
 
     L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
