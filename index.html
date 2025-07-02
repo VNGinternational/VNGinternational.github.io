@@ -62,14 +62,14 @@
       }
     );
 
-    const UnitstoJoinLayer = L.layerGroup().addTo(map);
+    const pointJoinLayer = L.layerGroup().addTo(map);
     const buildingsLayer = L.layerGroup().addTo(map);
     const parcelsLayer = L.layerGroup().addTo(map);
 
-    $.getJSON("UnitstoJoin.json")
+    $.getJSON("PointJoin.json")
       .done(function (data) {
         let first = true;
-        const UnitstoJoin = L.geoJson(data, {
+        const pointJoin = L.geoJson(data, {
           pointToLayer: function (feature, latlng) {
             return L.circleMarker(latlng, {
               radius: 6,
@@ -103,13 +103,13 @@
           }
         });
 
-        UnitstoJoin.addTo(UnitstoJoinLayer);
-        if (UnitstoJoin.getLayers().length > 0) {
-          map.fitBounds(UnitstoJoin.getBounds());
+        pointJoin.addTo(pointJoinLayer);
+        if (pointJoin.getLayers().length > 0) {
+          map.fitBounds(pointJoin.getBounds());
         }
       })
       .fail(function () {
-        alert("فشل تحميل UnitstoJoin.json – تأكد من اسم الملف والمسار.");
+        alert("فشل تحميل PointJoin.json – تأكد من اسم الملف والمسار.");
       });
 
     $.getJSON("Parcel.json")
@@ -145,7 +145,7 @@
     };
 
     const overlayMaps = {
-      "Units to Join": UnitstoJoinLayer,
+      "Units to Join": pointJoinLayer,
       "Buildings": buildingsLayer,
       "Parcels": parcelsLayer
     };
