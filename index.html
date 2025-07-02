@@ -71,48 +71,58 @@
     const parcelsLayer = L.layerGroup();
 
     $.getJSON("UnitstoJoin.json")
-      .done(function (data) {
-        let first = true;
-        const UnitstoJoin = L.geoJson(data, {
-          pointToLayer: function (feature, latlng) {
-            return L.circleMarker(latlng, {
-              radius: 6,
-              fillColor: "blue",
-              color: "blue",
-              weight: 1,
-              opacity: 1,
-              fillOpacity: 0.9
-            });
-          },
-          onEachFeature: function (feature, layer) {
-            const p = feature.properties;
-            const popupContent = `
-              <b>Unit ID:</b> ${p.UNIT_ID || "N/A"}<br>
-              <b>Name:</b> ${p.name || "N/A"}<br>
-              <b>Block Number:</b> ${p.Block_Number || "N/A"}<br>
-              <b>Parcel Number:</b> ${p.Parcel_Number || "N/A"}<br>
-              <b>Electricity Number:</b> ${p.Electricity_Number || "N/A"}<br>
-              <b>Water Number:</b> ${p.Water_Number || "N/A"}<br>
-              <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
-              <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
-              <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
-              <b>Permit Custom:</b> ${p.Permit_cus || "N/A"}<br>
-              <b>GDPT:</b> ${p.GDPT || "N/A"}
-            `;
-            layer.bindPopup(popupContent);
-            if (first) {
-              layer.openPopup();
-              first = false;
-            }
-          }
+  .done(function (data) {
+    let first = true;
+    const UnitstoJoin = L.geoJson(data, {
+      pointToLayer: function (feature, latlng) {
+        return L.circleMarker(latlng, {
+          radius: 6,
+          fillColor: "blue",
+          color: "blue",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.9
         });
-        UnitstoJoin.addTo(UnitstoJoinLayer);
-        UnitstoJoinLayer.addTo(map);
-        map.fitBounds(UnitstoJoin.getBounds());
-      })
-      .fail(function () {
-        alert("فشل تحميل UnitstoJoin.json – تأكد من المسار والبيانات.");
-      });
+      },
+      onEachFeature: function (feature, layer) {
+        const p = feature.properties;
+        const popupContent = `
+          <b>Unit ID:</b> ${p.UNIT_ID || "N/A"}<br>
+          <b>Name:</b> ${p.name || "N/A"}<br>
+          <b>Block Number:</b> ${p.Block_Number || "N/A"}<br>
+          <b>Parcel Number:</b> ${p.Parcel_Number || "N/A"}<br>
+          <b>Electricity Number:</b> ${p.Electricity_Number || "N/A"}<br>
+          <b>Water Number:</b> ${p.Water_Number || "N/A"}<br>
+          <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
+          <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
+          <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
+          <b>Permit Custom:</b> ${p.Permit_cus || "N/A"}<br>
+          <b>GDPT:</b> ${p.GDPT || "N/A"}
+        `;
+        layer.bindPopup(popupContent);
+        if (first) {
+          layer.openPopup();
+          first = false;
+        }
+      }
+    });
+
+    // ✅ أضف الطبقة إلى المجموعة
+    UnitstoJoin.addTo(UnitstoJoinLayer);
+
+    // ✅ أضف المجموعة إلى الخريطة هنا، بعد التأكد من أنها تحوي بيانات
+    UnitstoJoinLayer.addTo(map);
+
+    // ✅ استخدم FitBounds فقط إذا كان هناك بيانات
+    if (UnitstoJoin.getLayers().length > 0) {
+      map.fitBounds(UnitstoJoin.getBounds());
+    } else {
+      console.warn("لم يتم العثور على معالم (features) في UnitstoJoin.");
+    }
+  })
+  .fail(function () {
+    alert("فشل تحميل UnitstoJoin.json – تأكد من اسم الملف والمسار.");
+  });
 
     $.getJSON("Parcel.json")
       .done(function (data) {
