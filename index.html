@@ -62,16 +62,28 @@
       }
     );
 
-    // تفعيل طبقة OnP.geojson فقط عند التحميل
+    // الطبقات
     const pointConnectionLayer = L.layerGroup().addTo(map);
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
 
+    // تحميل طبقة OnP.geojson مع تصحيح الإحداثيات إذا كانت معكوسة
     $.getJSON("OnP.geojson")
-      .done(function (data) {
-        let first = true;
+      .done(function(data) {
+        data.features.forEach(feature => {
+          if (feature.geometry && feature.geometry.type === "Point") {
+            const coords = feature.geometry.coordinates;
+            // تحقق من احتمالية عكس الإحداثيات (lat, lng بدلاً من lng, lat)
+            // الشرط هنا يتحقق إذا كانت الإحداثيات تبدو كـ lat أولاً (عادة lat بين -90 و 90)
+            if (coords[0] < -90 || coords[0] > 90) {
+              // عكس الإحداثيات
+              feature.geometry.coordinates = [coords[1], coords[0]];
+            }
+          }
+        });
+
         const pointConnection = L.geoJson(data, {
-          pointToLayer: function (feature, latlng) {
+          pointToLayer: function(feature, latlng) {
             return L.circleMarker(latlng, {
               radius: 6,
               fillColor: "blue",
@@ -81,7 +93,7 @@
               fillOpacity: 0.9
             });
           },
-          onEachFeature: function (feature, layer) {
+          onEachFeature: function(feature, layer) {
             const p = feature.properties;
             const popupContent = `
               <b>الاسم:</b> ${p.data_unit_ || "N/A"}<br>
@@ -95,10 +107,6 @@
               <b>GDPT:</b> ${p.GDPT || "N/A"}
             `;
             layer.bindPopup(popupContent);
-            if (first) {
-              layer.openPopup();
-              first = false;
-            }
           }
         });
 
@@ -107,11 +115,11 @@
           map.fitBounds(pointConnection.getBounds());
         }
       })
-      .fail(function () {
+      .fail(function() {
         alert("فشل تحميل OnP.geojson – تأكد من الاسم أو المسار.");
       });
 
-    // طبقات إضافية غير مفعلة عند الفتح
+    // تحميل طبقة القطع (Parcel.json) - غير مفعلة تلقائياً
     $.getJSON("Parcel.json").done(function (data) {
       const parcels = L.geoJson(data, {
         style: {
@@ -124,6 +132,7 @@
       parcels.addTo(parcelsLayer);
     });
 
+    // تحميل طبقة المباني (Building.json) - غير مفعلة تلقائياً
     $.getJSON("Building.json").done(function (data) {
       const buildings = L.geoJson(data, {
         style: {
@@ -137,19 +146,21 @@
       buildings.addTo(buildingsLayer);
     });
 
+    // الطبقات القاعدية والطبقات الإضافية في عنصر التحكم
     const baseMaps = {
       "Esri Satellite": esriLayer,
       "OpenStreetMap": osmLayer
     };
 
     const overlayMaps = {
-      "Service Units": pointConnectionLayer,
+      "Service Units (Points)": pointConnectionLayer,
       "Buildings": buildingsLayer,
       "Parcels": parcelsLayer
     };
 
     L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
 
+    // أداة تحديد الموقع
     L.control.locate({
       position: 'topleft',
       drawCircle: false,
@@ -165,6 +176,7 @@
       }
     }).addTo(map);
 
+    // أزرار التنقل يمين ويسار
     document.getElementById('left-button').addEventListener('click', () => {
       const c = map.getCenter();
       map.panTo(L.latLng(c.lat, c.lng - 0.05));
