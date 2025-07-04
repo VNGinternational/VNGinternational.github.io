@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>GIS Map Test – Demo Point Layer</title>
+  <title>VNG International GIS Map – Service Units in Salfeet</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
@@ -52,86 +52,93 @@
     }
   );
 
+  // الطبقات
   const pointConnectionLayer = L.layerGroup().addTo(map);
+  const buildingsLayer = L.layerGroup();
+  const parcelsLayer = L.layerGroup();
 
-  // ✅ بيانات GeoJSON تجريبية (لنقطة واحدة)
-  const testData = {
-    "type": "FeatureCollection",
-    "features": [
-      {
-        "type": "Feature",
-        "properties": {
-          "data_unit_": "Test Unit A",
-          "UNIT_ID": "U-001",
-          "elec_numb": "EL-123",
-          "Water_numb": "WA-456",
-          "bod_permit": "Yes",
-          "crafts_lic": "No",
-          "Edu_tax": "Paid",
-          "Permit_cus": "AP-789",
-          "GDPT": "Available"
+  // ✅ تحميل ملف OnP.geojson من السيرفر
+  $.getJSON("OnP.geojson")
+    .done(function(data) {
+      const points = L.geoJson(data, {
+        pointToLayer: function(feature, latlng) {
+          return L.circleMarker(latlng, {
+            radius: 6,
+            fillColor: "blue",
+            color: "blue",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.9
+          });
         },
-        "geometry": {
-          "type": "Point",
-          "coordinates": [35.1770, 32.0820]  // [longitude, latitude]
+        onEachFeature: function(feature, layer) {
+          const p = feature.properties;
+          const popupContent = `
+            <b>الاسم:</b> ${p.data_unit_ || "N/A"}<br>
+            <b>Unit Number:</b> ${p.UNIT_ID || "N/A"}<br>
+            <b>Electricity Number:</b> ${p.elec_numb || "N/A"}<br>
+            <b>Water Number:</b> ${p.Water_numb || "N/A"}<br>
+            <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
+            <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
+            <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
+            <b>Apartment Serial Number:</b> ${p.Permit_cus || "N/A"}<br>
+            <b>GDPT:</b> ${p.GDPT || "N/A"}
+          `;
+          layer.bindPopup(popupContent);
         }
-      }
-    ]
-  };
+      });
 
-  
-      $.getJSON("OnP.geojson")
-  .done(function(data) {
-    const pointConnection = L.geoJson(data, {
-      pointToLayer: function(feature, latlng) {
-        return L.circleMarker(latlng, {
-          radius: 6,
-          fillColor: "blue",
-          color: "blue",
-          weight: 1,
-          opacity: 1,
-          fillOpacity: 0.9
-        });
-      },
-      onEachFeature: function(feature, layer) {
-        const p = feature.properties;
-        const popupContent = `
-          <b>الاسم:</b> ${p.data_unit_ || "N/A"}<br>
-          <b>Unit Number:</b> ${p.UNIT_ID || "N/A"}<br>
-          <b>Electricity Number:</b> ${p.elec_numb || "N/A"}<br>
-          <b>Water Number:</b> ${p.Water_numb || "N/A"}<br>
-          <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
-          <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
-          <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
-          <b>Apartment serial Number:</b> ${p.Permit_cus || "N/A"}<br>
-          <b>GDPT:</b> ${p.GDPT || "N/A"}
-        `;
-        layer.bindPopup(popupContent);
+      points.addTo(pointConnectionLayer);
+      if (points.getLayers().length > 0) {
+        map.fitBounds(points.getBounds());
       }
+    })
+    .fail(function() {
+      alert("❌ فشل في تحميل ملف OnP.geojson – تحقق من الاسم أو المسار أو التنسيق.");
     });
 
-    pointConnection.addTo(map);
-    map.fitBounds(pointConnection.getBounds());
-  })
-  .fail(function() {
-    alert("فشل في تحميل OnP.geojson – تحقق من الاسم أو المسار أو التنسيق.");
+  // تحميل طبقة القطع (Parcels)
+  $.getJSON("Parcel.json").done(function(data) {
+    const parcels = L.geoJson(data, {
+      style: {
+        fillOpacity: 0,
+        color: "red",
+        weight: 1.5,
+        opacity: 0.9
+      }
+    });
+    parcels.addTo(parcelsLayer);
   });
 
+  // تحميل طبقة المباني (Buildings)
+  $.getJSON("Building.json").done(function(data) {
+    const buildings = L.geoJson(data, {
+      style: {
+        fillColor: "brown",
+        fillOpacity: 0.7,
+        color: "brown",
+        weight: 1.5,
+        opacity: 0.9
+      }
+    });
+    buildings.addTo(buildingsLayer);
+  });
 
-  pointConnection.addTo(pointConnectionLayer);
-  map.fitBounds(pointConnection.getBounds());
-
+  // أدوات الطبقات
   const baseMaps = {
     "Esri Satellite": esriLayer,
     "OpenStreetMap": osmLayer
   };
 
   const overlayMaps = {
-    "Service Units (Points)": pointConnectionLayer
+    "Service Units (Points)": pointConnectionLayer,
+    "Buildings": buildingsLayer,
+    "Parcels": parcelsLayer
   };
 
   L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
 
+  // زر تحديد الموقع
   L.control.locate({
     position: 'topleft',
     drawCircle: false,
@@ -147,6 +154,7 @@
     }
   }).addTo(map);
 
+  // أزرار التحريك
   document.getElementById('left-button').addEventListener('click', () => {
     const c = map.getCenter();
     map.panTo(L.latLng(c.lat, c.lng - 0.05));
