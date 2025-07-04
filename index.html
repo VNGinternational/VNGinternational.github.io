@@ -62,11 +62,12 @@
       }
     );
 
+    // فقط PointCon يتم تفعيله عند التحميل
     const pointConnectionLayer = L.layerGroup().addTo(map);
-    const buildingsLayer = L.layerGroup().addTo(map);
-    const parcelsLayer = L.layerGroup().addTo(map);
+    const buildingsLayer = L.layerGroup();
+    const parcelsLayer = L.layerGroup();
 
-    $.getJSON("PointConnection.json")
+    $.getJSON("PointCon.json")
       .done(function (data) {
         let first = true;
         const pointConnection = L.geoJson(data, {
@@ -84,7 +85,7 @@
             const p = feature.properties;
             const popupContent = `
               <b>Unit ID:</b> ${p.UNIT_ID || "N/A"}<br>
-              <b>Name:</b> ${p.name || "N/A"}<br>
+              <b>Name:</b> ${p.name || p.Name || "N/A"}<br>
               <b>Block Number:</b> ${p.Block_Number || "N/A"}<br>
               <b>Parcel Number:</b> ${p.Parcel_Number || "N/A"}<br>
               <b>Electricity Number:</b> ${p.Electricity_Number || "N/A"}<br>
@@ -109,35 +110,34 @@
         }
       })
       .fail(function () {
-        alert("فشل تحميل PointConnection.json – تأكد من اسم الملف والمسار.");
+        alert("فشل تحميل PointCon.json – تأكد من الاسم أو المسار.");
       });
 
-    $.getJSON("Parcel.json")
-      .done(function (data) {
-        const parcels = L.geoJson(data, {
-          style: {
-            fillOpacity: 0.0,
-            color: "red",
-            weight: 1.5,
-            opacity: 0.9
-          }
-        });
-        parcels.addTo(parcelsLayer);
+    // طبقات إضافية غير مفعلة عند الفتح
+    $.getJSON("Parcel.json").done(function (data) {
+      const parcels = L.geoJson(data, {
+        style: {
+          fillOpacity: 0.0,
+          color: "red",
+          weight: 1.5,
+          opacity: 0.9
+        }
       });
+      parcels.addTo(parcelsLayer);
+    });
 
-    $.getJSON("Building.json")
-      .done(function (data) {
-        const buildings = L.geoJson(data, {
-          style: {
-            fillColor: "brown",
-            fillOpacity: 0.7,
-            color: "brown",
-            weight: 1.5,
-            opacity: 0.9
-          }
-        });
-        buildings.addTo(buildingsLayer);
+    $.getJSON("Building.json").done(function (data) {
+      const buildings = L.geoJson(data, {
+        style: {
+          fillColor: "brown",
+          fillOpacity: 0.7,
+          color: "brown",
+          weight: 1.5,
+          opacity: 0.9
+        }
       });
+      buildings.addTo(buildingsLayer);
+    });
 
     const baseMaps = {
       "Esri Satellite": esriLayer,
