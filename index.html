@@ -79,33 +79,44 @@
     ]
   };
 
-  const pointConnection = L.geoJson(testData, {
-    pointToLayer: function(feature, latlng) {
-      return L.circleMarker(latlng, {
-        radius: 6,
-        fillColor: "blue",
-        color: "blue",
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 0.9
-      });
-    },
-    onEachFeature: function(feature, layer) {
-      const p = feature.properties;
-      const popupContent = `
-        <b>الاسم:</b> ${p.data_unit_ || "N/A"}<br>
-        <b>Unit Number:</b> ${p.UNIT_ID || "N/A"}<br>
-        <b>Electricity Number:</b> ${p.elec_numb || "N/A"}<br>
-        <b>Water Number:</b> ${p.Water_numb || "N/A"}<br>
-        <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
-        <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
-        <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
-        <b>Apartment serial Number:</b> ${p.Permit_cus || "N/A"}<br>
-        <b>GDPT:</b> ${p.GDPT || "N/A"}
-      `;
-      layer.bindPopup(popupContent);
-    }
+  
+      $.getJSON("OnP.geojson")
+  .done(function(data) {
+    const pointConnection = L.geoJson(data, {
+      pointToLayer: function(feature, latlng) {
+        return L.circleMarker(latlng, {
+          radius: 6,
+          fillColor: "blue",
+          color: "blue",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.9
+        });
+      },
+      onEachFeature: function(feature, layer) {
+        const p = feature.properties;
+        const popupContent = `
+          <b>الاسم:</b> ${p.data_unit_ || "N/A"}<br>
+          <b>Unit Number:</b> ${p.UNIT_ID || "N/A"}<br>
+          <b>Electricity Number:</b> ${p.elec_numb || "N/A"}<br>
+          <b>Water Number:</b> ${p.Water_numb || "N/A"}<br>
+          <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
+          <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
+          <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
+          <b>Apartment serial Number:</b> ${p.Permit_cus || "N/A"}<br>
+          <b>GDPT:</b> ${p.GDPT || "N/A"}
+        `;
+        layer.bindPopup(popupContent);
+      }
+    });
+
+    pointConnection.addTo(map);
+    map.fitBounds(pointConnection.getBounds());
+  })
+  .fail(function() {
+    alert("فشل في تحميل OnP.geojson – تحقق من الاسم أو المسار أو التنسيق.");
   });
+
 
   pointConnection.addTo(pointConnectionLayer);
   map.fitBounds(pointConnection.getBounds());
