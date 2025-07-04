@@ -7,8 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
   <style>
-    html, body { height: 100%; margin: 0; padding: 0; }
-    #map { height: 100%; width: 100%; }
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
     .nav-button {
       position: absolute;
       top: 50%;
@@ -35,7 +34,7 @@
 
 <script>
   const map = L.map('map', {
-    center: [32.0820, 35.1770],
+    center: [32.0761, 35.1847],
     zoom: 18,
     zoomSnap: 0.5
   });
@@ -57,7 +56,7 @@
   const buildingsLayer = L.layerGroup();
   const parcelsLayer = L.layerGroup();
 
-  // ✅ تحميل ملف OnP.geojson من السيرفر
+  // تحميل بيانات OnP.geojson للنقاط
   $.getJSON("OnP.geojson")
     .done(function(data) {
       const points = L.geoJson(data, {
@@ -81,23 +80,22 @@
             <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
             <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
             <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
-            <b>Apartment Serial Number:</b> ${p.Permit_cus || "N/A"}<br>
+            <b>Permit Custom:</b> ${p.Permit_cus || "N/A"}<br>
             <b>GDPT:</b> ${p.GDPT || "N/A"}
           `;
           layer.bindPopup(popupContent);
         }
       });
-
       points.addTo(pointConnectionLayer);
       if (points.getLayers().length > 0) {
         map.fitBounds(points.getBounds());
       }
     })
     .fail(function() {
-      alert("❌ فشل في تحميل ملف OnP.geojson – تحقق من الاسم أو المسار أو التنسيق.");
+      alert("فشل تحميل ملف OnP.geojson. تأكد من الاسم والمسار.");
     });
 
-  // تحميل طبقة القطع (Parcels)
+  // تحميل طبقات إضافية إذا تحتاج
   $.getJSON("Parcel.json").done(function(data) {
     const parcels = L.geoJson(data, {
       style: {
@@ -110,7 +108,6 @@
     parcels.addTo(parcelsLayer);
   });
 
-  // تحميل طبقة المباني (Buildings)
   $.getJSON("Building.json").done(function(data) {
     const buildings = L.geoJson(data, {
       style: {
@@ -124,7 +121,7 @@
     buildings.addTo(buildingsLayer);
   });
 
-  // أدوات الطبقات
+  // تحكم الطبقات
   const baseMaps = {
     "Esri Satellite": esriLayer,
     "OpenStreetMap": osmLayer
@@ -154,7 +151,7 @@
     }
   }).addTo(map);
 
-  // أزرار التحريك
+  // أزرار تحريك الخريطة أفقياً
   document.getElementById('left-button').addEventListener('click', () => {
     const c = map.getCenter();
     map.panTo(L.latLng(c.lat, c.lng - 0.05));
