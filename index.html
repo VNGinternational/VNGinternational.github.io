@@ -7,8 +7,18 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
-    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+    }
     .nav-button {
       position: absolute;
       top: 50%;
@@ -21,40 +31,12 @@
     }
     #left-button { left: 10px; }
     #right-button { right: 10px; }
-
-    #searchBox {
-      position: absolute;
-      top: 10px;
-      left: 50px;
-      z-index: 1000;
-      background: white;
-      padding: 5px;
-      border-radius: 5px;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-    }
-
-    #basemapToggle {
-      position: absolute;
-      top: 10px;
-      right: 50px;
-      z-index: 1000;
-      background: white;
-      padding: 5px 10px;
-      cursor: pointer;
-      border-radius: 5px;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-    }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <div id="left-button" class="nav-button"><i class="fas fa-arrow-left"></i></div>
   <div id="right-button" class="nav-button"><i class="fas fa-arrow-right"></i></div>
-  <div id="searchBox">
-    <input type="text" id="searchInput" placeholder="ابحث عن UNIT_ID" />
-    <button onclick="searchUnit()">بحث</button>
-  </div>
-  <div id="basemapToggle">تبديل الخريطة</div>
 
   <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -62,14 +44,14 @@
 
   <script>
     const map = L.map('map', {
-      center: [32.0762, 35.1847],
-      zoom: 18,
+      center: [32.08204972125716, 35.17704914292061],
+      zoom: 20,
       zoomSnap: 0.5
     });
 
     const esriLayer = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri'
+        attribution: 'Tiles &copy; Esri'
       }
     ).addTo(map);
 
@@ -80,25 +62,15 @@
       }
     );
 
-    let currentBase = "esri";
-    document.getElementById("basemapToggle").onclick = function () {
-      if (currentBase === "esri") {
-        map.removeLayer(esriLayer);
-        osmLayer.addTo(map);
-        currentBase = "osm";
-      } else {
-        map.removeLayer(osmLayer);
-        esriLayer.addTo(map);
-        currentBase = "esri";
-      }
-    };
+    // تفعيل طبقة OnP.geojson فقط عند التحميل
+    const pointConnectionLayer = L.layerGroup().addTo(map);
+    const buildingsLayer = L.layerGroup();
+    const parcelsLayer = L.layerGroup();
 
-    const pointLayer = L.layerGroup().addTo(map);
-    let geojsonLayer;
-
-    $.getJSON("PointCon.json")
+    $.getJSON("OnP.geojson")
       .done(function (data) {
-        geojsonLayer = L.geoJson(data, {
+        let first = true;
+        const pointConnection = L.geoJson(data, {
           pointToLayer: function (feature, latlng) {
             return L.circleMarker(latlng, {
               radius: 6,
@@ -111,45 +83,72 @@
           },
           onEachFeature: function (feature, layer) {
             const p = feature.properties;
-            const popup = `
+            const popupContent = `
               <b>الاسم:</b> ${p.data_unit_ || "N/A"}<br>
-              <b>رقم الوحدة:</b> ${p.UNIT_ID || "N/A"}<br>
-              <b>رقم الكهرباء:</b> ${p.elec_numb || "N/A"}<br>
-              <b>رقم المياه:</b> ${p.Water_numb || "N/A"}<br>
-              <b>تصريح البناء:</b> ${p.bod_permit || "N/A"}<br>
-              <b>رخصة الحرف:</b> ${p.crafts_lic || "N/A"}<br>
-              <b>ضريبة المعارف:</b> ${p.Edu_tax || "N/A"}<br>
-              <b>تصريح مخصص:</b> ${p.Permit_cus || "N/A"}<br>
+              <b>Unit Number :</b> ${p.UNIT_ID || "N/A"}<br>
+              <b>Electricity Number:</b> ${p.elec_numb || "N/A"}<br>
+              <b>Water Number:</b> ${p.Water_numb || "N/A"}<br>
+              <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
+              <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
+              <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
+              <b>Apartment serial Number:</b> ${p.Permit_cus || "N/A"}<br>
               <b>GDPT:</b> ${p.GDPT || "N/A"}
             `;
-            layer.bindPopup(popup);
+            layer.bindPopup(popupContent);
+            if (first) {
+              layer.openPopup();
+              first = false;
+            }
           }
         });
-        geojsonLayer.addTo(pointLayer);
-        map.fitBounds(geojsonLayer.getBounds());
+
+        pointConnection.addTo(pointConnectionLayer);
+        if (pointConnection.getLayers().length > 0) {
+          map.fitBounds(pointConnection.getBounds());
+        }
       })
       .fail(function () {
-        alert("❌ فشل تحميل ملف PointCon.json – تأكد من الاسم أو المسار.");
+        alert("فشل تحميل OnP.geojson – تأكد من الاسم أو المسار.");
       });
 
-    function searchUnit() {
-      const id = document.getElementById("searchInput").value.trim();
-      if (!id || !geojsonLayer) return;
-
-      let found = false;
-      geojsonLayer.eachLayer(function (layer) {
-        const p = layer.feature.properties;
-        if (p.UNIT_ID && p.UNIT_ID.toString() === id) {
-          map.setView(layer.getLatLng(), 20);
-          layer.openPopup();
-          found = true;
+    // طبقات إضافية غير مفعلة عند الفتح
+    $.getJSON("Parcel.json").done(function (data) {
+      const parcels = L.geoJson(data, {
+        style: {
+          fillOpacity: 0.0,
+          color: "red",
+          weight: 1.5,
+          opacity: 0.9
         }
       });
+      parcels.addTo(parcelsLayer);
+    });
 
-      if (!found) {
-        alert("الوحدة غير موجودة.");
-      }
-    }
+    $.getJSON("Building.json").done(function (data) {
+      const buildings = L.geoJson(data, {
+        style: {
+          fillColor: "brown",
+          fillOpacity: 0.7,
+          color: "brown",
+          weight: 1.5,
+          opacity: 0.9
+        }
+      });
+      buildings.addTo(buildingsLayer);
+    });
+
+    const baseMaps = {
+      "Esri Satellite": esriLayer,
+      "OpenStreetMap": osmLayer
+    };
+
+    const overlayMaps = {
+      "Service Units": pointConnectionLayer,
+      "Buildings": buildingsLayer,
+      "Parcels": parcelsLayer
+    };
+
+    L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
 
     L.control.locate({
       position: 'topleft',
@@ -160,7 +159,7 @@
       icon: 'fa fa-location-arrow',
       metric: true,
       locateOptions: {
-        maxZoom: 20,
+        maxZoom: 40,
         enableHighAccuracy: true,
         timeout: 10000
       }
@@ -168,12 +167,12 @@
 
     document.getElementById('left-button').addEventListener('click', () => {
       const c = map.getCenter();
-      map.panTo([c.lat, c.lng - 0.005]);
+      map.panTo(L.latLng(c.lat, c.lng - 0.05));
     });
 
     document.getElementById('right-button').addEventListener('click', () => {
       const c = map.getCenter();
-      map.panTo([c.lat, c.lng + 0.005]);
+      map.panTo(L.latLng(c.lat, c.lng + 0.05));
     });
   </script>
 </body>
