@@ -82,12 +82,11 @@
       attribution: '© OpenStreetMap contributors'
     });
 
-    // OpenStreetMap هي الافتراضية عند الفتح
-    osmLayer.addTo(map);
+    osmLayer.addTo(map); // OSM default
 
-    const pointConnectionLayer = L.layerGroup().addTo(map);
-    const buildingsLayer = L.layerGroup();
-    const parcelsLayer = L.layerGroup();
+    const pointConnectionLayer = L.layerGroup().addTo(map); // Default visible
+    const buildingsLayer = L.layerGroup().addTo(map); // Now visible by default
+    const parcelsLayer = L.layerGroup(); // Not visible initially
 
     fetch("PointCon.json")
       .then(res => res.json())
@@ -107,8 +106,8 @@
           pointToLayer: function (feature, latlng) {
             return L.circleMarker(latlng, {
               radius: 4,
-              fillColor: "#006400", // Dark Green
-              color: "#000",
+              fillColor: "#00FF00", // فاقع
+              color: "#000000",
               weight: 1,
               opacity: 1,
               fillOpacity: 0.8
@@ -147,17 +146,16 @@
             onEachFeature: (feature, layer) => {
               const p = feature.properties || {};
               if (isParcel) {
-                const popupContent = `
+                layer.bindPopup(`
                   <b>Block Number :</b> ${p.b_number || "N/A"}<br>
                   <b>Parcel Number:</b> ${p.p_number || "N/A"}<br>
                   <b>Quarter Number:</b> ${p.q_number || "N/A"}<br>
                   <b>Area:</b> ${p.area || "N/A"}<br>
                   <b>Block code:</b> ${p.bqpcode || "N/A"}<br>
                   <b>Parcel code:</b> ${p.code || "N/A"}
-                `;
-                layer.bindPopup(popupContent);
+                `);
               } else if (isBuilding) {
-                const popupContent = `
+                layer.bindPopup(`
                   <b>Building Number:</b> ${p.bld_number || "N/A"}<br>
                   <b>Building Name:</b> ${p.bld_a_name || "N/A"}<br>
                   <b>Building Use:</b> ${p.b_use || "N/A"}<br>
@@ -166,8 +164,7 @@
                   <b>Building Status (Arabic):</b> ${p.b_status_a || "N/A"}<br>
                   <b>Street Number:</b> ${p.st_num || "N/A"}<br>
                   <b>Building Image:</b> ${p.b_image ? `<a href="${p.b_image}" target="_blank">View Image</a>` : "N/A"}
-                `;
-                layer.bindPopup(popupContent);
+                `);
               }
             }
           }).addTo(targetLayer);
@@ -175,9 +172,9 @@
         .catch(err => console.error(`❌ Error loading ${url}:`, err));
     }
 
-    // Apply colors
-    loadPolygonLayer("Parcel.json", { color: "#40E0D0", weight: 2, fillOpacity: 0.1 }, parcelsLayer, true); // Turquoise
-    loadPolygonLayer("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, buildingsLayer, false, true); // Brown
+    // تحميل الطبقات مع الألوان المحددة
+    loadPolygonLayer("Parcel.json", { color: "#00CED1", weight: 2, fillOpacity: 0 }, parcelsLayer, true);
+    loadPolygonLayer("Building.json", { color: "red", weight: 2, fillOpacity: 0 }, buildingsLayer, false, true);
 
     const baseMaps = {
       "OpenStreetMap": osmLayer,
