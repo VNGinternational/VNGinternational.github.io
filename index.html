@@ -22,19 +22,17 @@
 <body>
   <div id="map"></div>
 
-  <!-- مكتبة Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- مكتبة proj4 لتحويل الإحداثيات -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.8.0/proj4.js"></script>
 
   <script>
-    // تعريف نظام فلسطين (EPSG:28191)
+    // تعريف نظام فلسطين EPSG:28191
     proj4.defs(
       "EPSG:28191",
       "+proj=tmerc +lat_0=31.73439361111111 +lon_0=35.20451694444445 +k=1.0 +x_0=170251.555 +y_0=126867.909 +ellps=clrk80 +units=m +no_defs"
     );
 
-    // دالة تحويل إحداثيات (أعشاش نقاط/مضلعات) من EPSG:28191 إلى WGS84
+    // دالة لتحويل إحداثيات (نقطة، خط، مضلع، أو أعمق)
     function convertCoords(coords) {
       if (typeof coords[0] === "number" && typeof coords[1] === "number") {
         return proj4("EPSG:28191", "WGS84", coords);
@@ -44,7 +42,7 @@
       return coords;
     }
 
-    // تحويل كامل الـ Feature
+    // تحويل Feature كاملة
     function convertFeature(feature) {
       if (!feature.geometry || !feature.geometry.coordinates) return feature;
       return {
@@ -56,7 +54,7 @@
       };
     }
 
-    // تحويل كامل الـ GeoJSON
+    // تحويل GeoJSON كامل
     function convertGeoJSON(geojson) {
       if (geojson.type === "FeatureCollection") {
         geojson.features = geojson.features.map(convertFeature);
@@ -66,9 +64,9 @@
       return geojson;
     }
 
-    // إعداد الخريطة
+    // تهيئة الخريطة مركز سلفيت
     const map = L.map("map", {
-      center: [32.0796, 35.1714], // سلفيت
+      center: [32.0796, 35.1714],
       zoom: 15,
     });
 
@@ -88,25 +86,28 @@
       }
     );
 
-    // تخزين الطبقات التي ستُعرض على الخريطة
-    const overlayLayers = {};
     const baseLayers = {
       "OpenStreetMap": osm,
       "Satellite (Esri)": satellite,
     };
 
-    // دالة تحميل وتحويل وعرض GeoJSON
-    function loadAndDisplayGeoJSON(url, style, layerName, isPoint = false) {
+    const overlayLayers = {};
+
+    // تحميل وعرض ملف GeoJSON مع تحويل الإحداثيات
+    function loadGeoJSON(url, style, layerName, isPoint = false) {
       fetch(url)
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error(`فشل تحميل الملف: ${url} (status ${res.status})`);
+          return res.json();
+        })
         .then((data) => {
-          // تحويل الإحداثيات
+          console.log(`تم تحميل ${layerName} من ${url}`);
           const converted = convertGeoJSON(data);
 
-          // تصفية النقاط الغير صالحة لو كانت نقاط
-          let filteredFeatures = converted.features;
+          // تصفية النقاط الغير صالحة إذا كانت نقاط
+          let features = converted.features || [];
           if (isPoint) {
-            filteredFeatures = filteredFeatures.filter(
+            features = features.filter(
               (f) =>
                 f.geometry &&
                 f.geometry.type === "Point" &&
@@ -115,16 +116,16 @@
                 typeof f.geometry.coordinates[1] === "number"
             );
           }
-          const cleanedGeoJSON = { ...converted, features: filteredFeatures };
+          const geojsonClean = { ...converted, features };
 
-          const layer = L.geoJSON(cleanedGeoJSON, {
+          const layer = L.geoJSON(geojsonClean, {
             style: style,
             onEachFeature: function (feature, layer) {
-              let popupContent = `<b>${layerName}</b><br>`;
+              let popup = `<b>${layerName}</b><br>`;
               for (const key in feature.properties) {
-                popupContent += `${key}: ${feature.properties[key]}<br>`;
+                popup += `${key}: ${feature.properties[key]}<br>`;
               }
-              layer.bindPopup(popupContent);
+              layer.bindPopup(popup);
             },
             pointToLayer: function (feature, latlng) {
               if (isPoint) {
@@ -145,22 +146,22 @@
           layerControl.addOverlay(layer, layerName);
         })
         .catch((err) => {
-          console.error(`فشل تحميل أو معالجة الملف ${url}`, err);
-          alert(`فشل تحميل الملف: ${url}\nتأكدي من مسار الملف وصحته`);
+          console.error(`خطأ في تحميل أو معالجة ${layerName}:`, err);
+          alert(`خطأ في تحميل أو معالجة ${layerName}.\n${err.message}`);
         });
     }
 
-    // تحكم بالطبقات
+    // إضافة تحكم الطبقات
     const layerControl = L.control.layers(baseLayers, overlayLayers, {
       collapsed: false,
     }).addTo(map);
 
-    // تحميل وعرض الطبقات مع ألوان حسب طلبك:
-    loadAndDisplayGeoJSON("PointCon.json", { color: "#ff7800" }, "Service Points", true);
-    loadAndDisplayGeoJSON("UnitstoJoin.json", { color: "#1f78b4" }, "Service Units", true);
-    loadAndDisplayGeoJSON("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, "Buildings");
-    loadAndDisplayGeoJSON("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, "Parcels");
-    loadAndDisplayGeoJSON("Block.json", { color: "#000000", weight: 2, fillOpacity: 0.0 }, "Blocks");
+    // تحميل الطبقات بالألوان المطلوبة
+    loadGeoJSON("PointCon.json", { color: "#ff7800" }, "Service Points", true);
+    loadGeoJSON("UnitstoJoin.json", { color: "#1f78b4" }, "Service Units", true);
+    loadGeoJSON("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, "Buildings");
+    loadGeoJSON("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, "Parcels");
+    loadGeoJSON("Block.json", { color: "#000000", weight: 2, fillOpacity: 0.0 }, "Blocks");
   </script>
 </body>
 </html>
