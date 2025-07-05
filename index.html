@@ -1,96 +1,166 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
   <meta charset="utf-8" />
-  <title>Salfit GIS Map – Units and Layers</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <title>خريطة سلفيت مع تحويل الإحداثيات</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
   <style>
-    #map { height: 100vh; width: 100vw; margin: 0; padding: 0; }
-    body { margin: 0; padding: 0; }
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
+  <!-- مكتبة Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- مكتبة proj4 لتحويل الإحداثيات -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.8.0/proj4.js"></script>
+
   <script>
+    // تعريف نظام فلسطين (EPSG:28191)
+    proj4.defs(
+      "EPSG:28191",
+      "+proj=tmerc +lat_0=31.73439361111111 +lon_0=35.20451694444445 +k=1.0 +x_0=170251.555 +y_0=126867.909 +ellps=clrk80 +units=m +no_defs"
+    );
+
+    // دالة تحويل إحداثيات (أعشاش نقاط/مضلعات) من EPSG:28191 إلى WGS84
+    function convertCoords(coords) {
+      if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+        return proj4("EPSG:28191", "WGS84", coords);
+      } else if (Array.isArray(coords)) {
+        return coords.map(convertCoords);
+      }
+      return coords;
+    }
+
+    // تحويل كامل الـ Feature
+    function convertFeature(feature) {
+      if (!feature.geometry || !feature.geometry.coordinates) return feature;
+      return {
+        ...feature,
+        geometry: {
+          ...feature.geometry,
+          coordinates: convertCoords(feature.geometry.coordinates),
+        },
+      };
+    }
+
+    // تحويل كامل الـ GeoJSON
+    function convertGeoJSON(geojson) {
+      if (geojson.type === "FeatureCollection") {
+        geojson.features = geojson.features.map(convertFeature);
+      } else if (geojson.type === "Feature") {
+        geojson = convertFeature(geojson);
+      }
+      return geojson;
+    }
+
+    // إعداد الخريطة
     const map = L.map("map", {
-      center: [32.0796, 35.1714],
-      zoom: 15
+      center: [32.0796, 35.1714], // سلفيت
+      zoom: 15,
     });
 
     // طبقات الأساس
-    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    const osm = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: "© OpenStreetMap contributors",
+      }
+    ).addTo(map);
 
-    const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      attribution: "Tiles © Esri"
-    });
+    const satellite = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Tiles © Esri",
+      }
+    );
 
-    // دالة لتحميل GeoJSON مع إعدادات خاصة
-    function loadGeoJSON(url, style, layerName, isPoint = false) {
+    // تخزين الطبقات التي ستُعرض على الخريطة
+    const overlayLayers = {};
+    const baseLayers = {
+      "OpenStreetMap": osm,
+      "Satellite (Esri)": satellite,
+    };
+
+    // دالة تحميل وتحويل وعرض GeoJSON
+    function loadAndDisplayGeoJSON(url, style, layerName, isPoint = false) {
       fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          let filteredData = data;
+        .then((res) => res.json())
+        .then((data) => {
+          // تحويل الإحداثيات
+          const converted = convertGeoJSON(data);
 
+          // تصفية النقاط الغير صالحة لو كانت نقاط
+          let filteredFeatures = converted.features;
           if (isPoint) {
-            filteredData = {
-              ...data,
-              features: data.features.filter(f =>
+            filteredFeatures = filteredFeatures.filter(
+              (f) =>
                 f.geometry &&
                 f.geometry.type === "Point" &&
                 Array.isArray(f.geometry.coordinates) &&
                 typeof f.geometry.coordinates[0] === "number" &&
                 typeof f.geometry.coordinates[1] === "number"
-              )
-            };
+            );
           }
+          const cleanedGeoJSON = { ...converted, features: filteredFeatures };
 
-          const layer = L.geoJSON(filteredData, {
+          const layer = L.geoJSON(cleanedGeoJSON, {
             style: style,
             onEachFeature: function (feature, layer) {
-              let popup = `<b>${layerName}</b><br>`;
-              for (let key in feature.properties) {
-                popup += `${key}: ${feature.properties[key]}<br>`;
+              let popupContent = `<b>${layerName}</b><br>`;
+              for (const key in feature.properties) {
+                popupContent += `${key}: ${feature.properties[key]}<br>`;
               }
-              layer.bindPopup(popup);
+              layer.bindPopup(popupContent);
             },
             pointToLayer: function (feature, latlng) {
-              return L.circleMarker(latlng, {
-                radius: 6,
-                fillColor: style.color || "#3388ff",
-                color: "#000",
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
-              });
-            }
+              if (isPoint) {
+                return L.circleMarker(latlng, {
+                  radius: 6,
+                  fillColor: style.color || "#3388ff",
+                  color: "#000",
+                  weight: 1,
+                  opacity: 1,
+                  fillOpacity: 0.8,
+                });
+              }
+              return L.polygon(latlng, style);
+            },
           }).addTo(map);
 
           overlayLayers[layerName] = layer;
           layerControl.addOverlay(layer, layerName);
         })
-        .catch(err => console.error(`❌ فشل تحميل ${url}`, err));
+        .catch((err) => {
+          console.error(`فشل تحميل أو معالجة الملف ${url}`, err);
+          alert(`فشل تحميل الملف: ${url}\nتأكدي من مسار الملف وصحته`);
+        });
     }
 
     // تحكم بالطبقات
-    const overlayLayers = {};
-    const baseLayers = {
-      "OpenStreetMap": osm,
-      "Satellite (Esri)": satellite
-    };
-    const layerControl = L.control.layers(baseLayers, overlayLayers, { collapsed: false }).addTo(map);
+    const layerControl = L.control.layers(baseLayers, overlayLayers, {
+      collapsed: false,
+    }).addTo(map);
 
-    // تحميل الطبقات بالألوان المحددة
-    loadGeoJSON("PointCon.json", { color: "#ff7800" }, "Service Points", true);
-    loadGeoJSON("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, "Buildings"); // بني
-    loadGeoJSON("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, "Parcels");     // أحمر
-    loadGeoJSON("Block.json", { color: "#000000", weight: 2, fillOpacity: 0.0 }, "Blocks");       // أسود
-
+    // تحميل وعرض الطبقات مع ألوان حسب طلبك:
+    loadAndDisplayGeoJSON("PointCon.json", { color: "#ff7800" }, "Service Points", true);
+    loadAndDisplayGeoJSON("UnitstoJoin.json", { color: "#1f78b4" }, "Service Units", true);
+    loadAndDisplayGeoJSON("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, "Buildings");
+    loadAndDisplayGeoJSON("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, "Parcels");
+    loadAndDisplayGeoJSON("Block.json", { color: "#000000", weight: 2, fillOpacity: 0.0 }, "Blocks");
   </script>
 </body>
 </html>
