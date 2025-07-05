@@ -5,7 +5,6 @@
   <title>VNG International GIS Map – Service Units in Salfeet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
   <style>
     #map { height: 100vh; width: 100vw; margin: 0; padding: 0; }
     body { margin: 0; padding: 0; }
@@ -51,25 +50,6 @@
     .move-control button:hover {
       background-color: #eee;
     }
-
-    /* تنسيق مربع خلف زر تحديد الموقع */
-    .leaflet-control-locate {
-      background: white !important;
-      border-radius: 6px !important;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3) !important;
-      padding: 4px !important;
-    }
-
-    .leaflet-control-locate a {
-      font-size: 22px !important;
-      line-height: 22px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      width: 36px !important;
-      height: 36px !important;
-      color: #333 !important;
-    }
   </style>
 </head>
 <body>
@@ -84,7 +64,6 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
 
   <script>
     const map = L.map("map", {
@@ -166,19 +145,34 @@
         console.error("❌ Error loading PointCon.json:", err);
       });
 
-    // تحميل طبقات المضلع - لكنها لن تضاف للخريطة مباشرة الآن (لأن المطلوب نقاط فقط عند الفتح)
-    function loadPolygonLayer(url, style, targetLayer) {
+    // تحميل طبقات المضلع — مع تعديل popup فقط للقطع
+    function loadPolygonLayer(url, style, targetLayer, isParcel = false) {
       fetch(url)
         .then(res => res.json())
         .then(data => {
           L.geoJSON(data, {
             style: style,
             onEachFeature: (feature, layer) => {
-              let popup = `<b>Feature</b><br>`;
-              for (let key in feature.properties) {
-                popup += `${key}: ${feature.properties[key]}<br>`;
+              if(isParcel) {
+                // فقط حقول معينة تظهر في البوب أب
+                const p = feature.properties || {};
+                const popupContent = `
+                  <b>لBlock Number :</b> ${p.b_number || "N/A"}<br>
+                  <b>Parcel Number:</b> ${p.p_number || "N/A"}<br>
+                  <b>q_number:</b> ${p.q_number || "N/A"}<br>
+                  <b>Area:</b> ${p.area || "N/A"}<br>
+                  <b>Blockcode:</b> ${p.bqpcode || "N/A"}<br>
+                  <b>Parcelcode:</b> ${p.code || "N/A"}
+                `;
+                layer.bindPopup(popupContent);
+              } else {
+                // popup عادي لكل شيء آخر
+                let popup = `<b>Feature</b><br>`;
+                for (let key in feature.properties) {
+                  popup += `${key}: ${feature.properties[key]}<br>`;
+                }
+                layer.bindPopup(popup);
               }
-              layer.bindPopup(popup);
             }
           }).addTo(targetLayer);
         })
@@ -186,7 +180,7 @@
     }
 
     loadPolygonLayer("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, buildingsLayer);
-    loadPolygonLayer("Parcel.json", { color: "#FF7F00", weight: 2, fillOpacity: 0.0 }, parcelsLayer); // برتقالي اللون
+    loadPolygonLayer("Parcel.json", { color: "#FF7F00", weight: 2, fillOpacity: 0.0 }, parcelsLayer, true); // برتقالي اللون وحدد popup خاص
 
     // تحكم الطبقات - collapsed = true
     const baseMaps = {
@@ -202,22 +196,7 @@
 
     L.control.layers(baseMaps, overlayMaps, { collapsed: true, position: 'topright' }).addTo(map);
 
-    // زر تحديد الموقع مع أيقونة 📍 داخل مربع أبيض
-    L.control.locate({
-      position: 'topleft',
-      drawCircle: false,
-      follow: true,
-      setView: true,
-      showPopup: false,
-      icon: '📍',
-      strings: {
-        title: "Locate me"
-      },
-      locateOptions: {
-        maxZoom: 18,
-        enableHighAccuracy: true
-      }
-    }).addTo(map);
+    // *** لم نضف زر تحديد الموقع (Locate Control) حسب طلبك ***
 
   </script>
 </body>
