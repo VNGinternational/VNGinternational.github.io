@@ -33,15 +33,15 @@
       attribution: "Tiles © Esri"
     });
 
-    osmLayer.addTo(map); // فقط طبقة النقاط تضاف بالبداية
+    osmLayer.addTo(map); // تظهر فقط OSM بالبداية
 
-    // إنشاء طبقات فارغة لإضافتها لاحقاً
+    // طبقات البيانات
     const pointConnectionLayer = L.layerGroup().addTo(map);
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
     const blocksLayer = L.layerGroup();
 
-    // أيقونة مخصصة للنقاط
+    // أيقونة النقطة الخضراء
     const greenIcon = L.icon({
       iconUrl: 'Green.png',
       iconSize: [24, 24],
@@ -49,10 +49,15 @@
       popupAnchor: [0, -10]
     });
 
-    // تحميل النقاط
+    // تحميل طبقة النقاط
     fetch("PointCon.json")
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Network response was not ok");
+        return res.json();
+      })
       .then(data => {
+        console.log("✅ PointCon data loaded:", data);
+
         const points = L.geoJSON(data, {
           pointToLayer: function(feature, latlng) {
             return L.marker(latlng, { icon: greenIcon });
@@ -76,13 +81,21 @@
 
         if (points.getLayers().length > 0) {
           map.fitBounds(points.getBounds());
+        } else {
+          console.warn("⚠️ No points loaded from GeoJSON!");
         }
+      })
+      .catch(err => {
+        console.error("❌ Failed to load PointCon.json:", err);
       });
 
-    // تحميل طبقات أخرى
+    // تحميل طبقات Polygon
     function loadPolygonLayer(url, style, targetLayer) {
       fetch(url)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error(`❌ Failed to load ${url}`);
+          return res.json();
+        })
         .then(data => {
           const layer = L.geoJSON(data, {
             style: style,
@@ -94,14 +107,15 @@
               layer.bindPopup(popup);
             }
           }).addTo(targetLayer);
-        });
+        })
+        .catch(err => console.error(err));
     }
 
-    loadPolygonLayer("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, buildingsLayer); // بني
-    loadPolygonLayer("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, parcelsLayer);     // أحمر
-    loadPolygonLayer("Block.json", { color: "#000000", weight: 2, fillOpacity: 0.0 }, blocksLayer);       // أسود
+    loadPolygonLayer("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, buildingsLayer);
+    loadPolygonLayer("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, parcelsLayer);
+    loadPolygonLayer("Block.json", { color: "#000000", weight: 2, fillOpacity: 0.0 }, blocksLayer);
 
-    // تحكم في الطبقات
+    // قائمة التحكم في الطبقات
     const baseMaps = {
       "Esri Satellite": esriLayer,
       "OpenStreetMap": osmLayer
