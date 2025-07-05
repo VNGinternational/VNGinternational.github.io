@@ -83,8 +83,8 @@
     });
 
     // OSM افتراضية
-    osmLayer.addTo(map);
-
+    esriLayer.addTo(map); // تضيف Esri كخريطة أساسية
+    
     // الطبقات
     const pointConnectionLayer = L.layerGroup().addTo(map); // مفعّلة عند الفتح
     const buildingsLayer = L.layerGroup(); // غير مفعلة
