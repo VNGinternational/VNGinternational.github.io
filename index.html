@@ -9,7 +9,6 @@
     #map { height: 100vh; width: 100vw; margin: 0; padding: 0; }
     body { margin: 0; padding: 0; }
 
-    /* تصغير حجم مربع التحكم عند التوسع */
     .leaflet-control-layers-expanded {
       max-height: 200px;
       max-width: 180px;
@@ -17,7 +16,6 @@
       font-size: 13px;
     }
 
-    /* زر التحريك - عمودي في منتصف الجانب الأيسر */
     .move-control {
       position: absolute;
       top: 50%;
@@ -55,7 +53,6 @@
 <body>
   <div id="map"></div>
 
-  <!-- أزرار التحريك -->
   <div class="move-control" id="moveControl" aria-label="Map Move Controls">
     <button onclick="moveMap(0, -0.001)" title="Move Up" aria-label="Move Up">↑</button>
     <button onclick="moveMap(-0.001, 0)" title="Move Left" aria-label="Move Left">←</button>
@@ -71,13 +68,11 @@
       zoom: 15
     });
 
-    // دالة تحريك الخريطة
     function moveMap(dx, dy) {
       const center = map.getCenter();
       map.panTo([center.lat + dy, center.lng + dx]);
     }
 
-    // طبقات الأساس
     const esriLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       attribution: "Tiles © Esri"
     });
@@ -87,13 +82,13 @@
       attribution: '© OpenStreetMap contributors'
     });
 
-    esriLayer.addTo(map); // تظهر صورة Esri Satellite فقط في البداية
+    esriLayer.addTo(map);
 
-    // طبقة النقاط فقط مع إضافة فلترة صارمة
     const pointConnectionLayer = L.layerGroup().addTo(map);
     const buildingsLayer = L.layerGroup();
     const parcelsLayer = L.layerGroup();
 
+    // UNITS (Points)
     fetch("PointCon.json")
       .then(res => res.json())
       .then(data => {
@@ -111,7 +106,7 @@
         const points = L.geoJSON(validPoints, {
           pointToLayer: function (feature, latlng) {
             return L.circleMarker(latlng, {
-              radius: 6,
+              radius: 4, // حجم النقطة مصغر
               fillColor: "#00aa00",
               color: "#000",
               weight: 1,
@@ -137,25 +132,22 @@
 
         if (points.getLayers().length > 0) {
           map.fitBounds(points.getBounds());
-        } else {
-          console.warn("⚠️ No valid points loaded!");
         }
       })
       .catch(err => {
         console.error("❌ Error loading PointCon.json:", err);
       });
 
-    // تحميل طبقات المضلع — مع تعديل popup فقط للقطع
-    function loadPolygonLayer(url, style, targetLayer, isParcel = false) {
+    // تحميل طبقات المضلع
+    function loadPolygonLayer(url, style, targetLayer, isParcel = false, isBuilding = false) {
       fetch(url)
         .then(res => res.json())
         .then(data => {
           L.geoJSON(data, {
             style: style,
             onEachFeature: (feature, layer) => {
-              if(isParcel) {
-                // فقط حقول معينة تظهر في البوب أب
-                const p = feature.properties || {};
+              const p = feature.properties || {};
+              if (isParcel) {
                 const popupContent = `
                   <b>Block Number :</b> ${p.b_number || "N/A"}<br>
                   <b>Parcel Number:</b> ${p.p_number || "N/A"}<br>
@@ -165,11 +157,22 @@
                   <b>Parcel code:</b> ${p.code || "N/A"}
                 `;
                 layer.bindPopup(popupContent);
+              } else if (isBuilding) {
+                const popupContent = `
+                  <b>Building Number:</b> ${p.bld_number || "N/A"}<br>
+                  <b>Building Name:</b> ${p.bld_a_name || "N/A"}<br>
+                  <b>Building Use:</b> ${p.b_use || "N/A"}<br>
+                  <b>Building Use (Arabic):</b> ${p.b_use_arb || "N/A"}<br>
+                  <b>Building Status:</b> ${p.status || "N/A"}<br>
+                  <b>Building Status (Arabic):</b> ${p.b_status_a || "N/A"}<br>
+                  <b>Street Number:</b> ${p.st_num || "N/A"}<br>
+                  <b>Building Image:</b> ${p.b_image ? `<a href="${p.b_image}" target="_blank">View Image</a>` : "N/A"}
+                `;
+                layer.bindPopup(popupContent);
               } else {
-                // popup عادي لكل شيء آخر
                 let popup = `<b>Feature</b><br>`;
-                for (let key in feature.properties) {
-                  popup += `${key}: ${feature.properties[key]}<br>`;
+                for (let key in p) {
+                  popup += `${key}: ${p[key]}<br>`;
                 }
                 layer.bindPopup(popup);
               }
@@ -179,10 +182,9 @@
         .catch(err => console.error(`❌ Error loading ${url}:`, err));
     }
 
-    loadPolygonLayer("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, buildingsLayer);
-    loadPolygonLayer("Parcel.json", { color: "#FF7F00", weight: 2, fillOpacity: 0.0 }, parcelsLayer, true); // برتقالي اللون وحدد popup خاص
+    loadPolygonLayer("Parcel.json", { color: "#FF7F00", weight: 2, fillOpacity: 0.0 }, parcelsLayer, true);
+    loadPolygonLayer("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, buildingsLayer, false, true);
 
-    // تحكم الطبقات - collapsed = true
     const baseMaps = {
       "Esri Satellite": esriLayer,
       "OpenStreetMap": osmLayer
@@ -195,9 +197,6 @@
     };
 
     L.control.layers(baseMaps, overlayMaps, { collapsed: true, position: 'topright' }).addTo(map);
-
-    // *** لم نضف زر تحديد الموقع (Locate Control) حسب طلبك ***
-
   </script>
 </body>
 </html>
