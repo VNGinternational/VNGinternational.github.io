@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>VNG International GIS Map – Service Points in Salfit</title>
+  <title>Salfit GIS Map – Units and Layers</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -15,73 +15,82 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // 1. إعداد الخريطة مع تركيز على مدينة سلفيت
     const map = L.map("map", {
-      center: [32.0796, 35.1714], // إحداثيات سلفيت
+      center: [32.0796, 35.1714],
       zoom: 15
     });
 
-    // 2. طبقات الأساس
+    // طبقات الأساس
     const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors'
-    }).addTo(map); // الطبقة الافتراضية
+    }).addTo(map);
 
     const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       attribution: "Tiles © Esri"
     });
 
-    // 3. تحميل GeoJSON مع تصفية النقاط غير الصالحة
-    fetch("PointCon.json")
-      .then(res => res.json())
-      .then(data => {
-        const validFeatures = data.features.filter(f =>
-          f.geometry &&
-          f.geometry.type === "Point" &&
-          Array.isArray(f.geometry.coordinates) &&
-          f.geometry.coordinates.length === 2 &&
-          typeof f.geometry.coordinates[0] === "number" &&
-          typeof f.geometry.coordinates[1] === "number"
-        );
+    // دالة لتحميل GeoJSON مع إعدادات خاصة
+    function loadGeoJSON(url, style, layerName, isPoint = false) {
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          let filteredData = data;
 
-        const cleanedData = { ...data, features: validFeatures };
-
-        const geojsonLayer = L.geoJSON(cleanedData, {
-          onEachFeature: function (feature, layer) {
-            let popupContent = "<b>Details:</b><br>";
-            for (let key in feature.properties) {
-              popupContent += `${key}: ${feature.properties[key]}<br>`;
-            }
-            layer.bindPopup(popupContent);
-          },
-          pointToLayer: function (feature, latlng) {
-            return L.circleMarker(latlng, {
-              radius: 6,
-              fillColor: "#ff7800",
-              color: "#000",
-              weight: 1,
-              opacity: 1,
-              fillOpacity: 0.8
-            });
+          if (isPoint) {
+            filteredData = {
+              ...data,
+              features: data.features.filter(f =>
+                f.geometry &&
+                f.geometry.type === "Point" &&
+                Array.isArray(f.geometry.coordinates) &&
+                typeof f.geometry.coordinates[0] === "number" &&
+                typeof f.geometry.coordinates[1] === "number"
+              )
+            };
           }
-        }).addTo(map);
 
-        // 4. تحكم بالطبقات
-        const baseMaps = {
-          "OpenStreetMap": osm,
-          "Satellite (Esri)": satellite
-        };
+          const layer = L.geoJSON(filteredData, {
+            style: style,
+            onEachFeature: function (feature, layer) {
+              let popup = `<b>${layerName}</b><br>`;
+              for (let key in feature.properties) {
+                popup += `${key}: ${feature.properties[key]}<br>`;
+              }
+              layer.bindPopup(popup);
+            },
+            pointToLayer: function (feature, latlng) {
+              return L.circleMarker(latlng, {
+                radius: 6,
+                fillColor: style.color || "#3388ff",
+                color: "#000",
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+              });
+            }
+          }).addTo(map);
 
-        const overlayMaps = {
-          "PointCon Layer": geojsonLayer
-        };
+          overlayLayers[layerName] = layer;
+          layerControl.addOverlay(layer, layerName);
+        })
+        .catch(err => console.error(`❌ فشل تحميل ${url}`, err));
+    }
 
-        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-      })
-      .catch(err => {
-        alert("فشل تحميل ملف PointCon.json. تأكدي من وجوده بجانب هذا الملف.");
-        console.error(err);
-      });
+    // تحكم بالطبقات
+    const overlayLayers = {};
+    const baseLayers = {
+      "OpenStreetMap": osm,
+      "Satellite (Esri)": satellite
+    };
+    const layerControl = L.control.layers(baseLayers, overlayLayers, { collapsed: false }).addTo(map);
+
+    // تحميل الطبقات بالألوان المحددة
+    loadGeoJSON("PointCon.json", { color: "#ff7800" }, "Service Points", true);
+    loadGeoJSON("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, "Buildings"); // بني
+    loadGeoJSON("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, "Parcels");     // أحمر
+    loadGeoJSON("Block.json", { color: "#000000", weight: 2, fillOpacity: 0.0 }, "Blocks");       // أسود
+
   </script>
 </body>
 </html>
