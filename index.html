@@ -8,66 +8,17 @@
   <style>
     #map { height: 100vh; width: 100vw; margin: 0; padding: 0; }
     body { margin: 0; padding: 0; }
-    .leaflet-control-layers-expanded {
-      max-height: 200px;
-      max-width: 180px;
-      overflow-y: auto;
-      font-size: 13px;
-    }
-    .move-control {
-      position: absolute;
-      top: 50%;
-      left: 10px;
-      transform: translateY(-50%);
-      z-index: 1000;
-      background: white;
-      border-radius: 6px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3);
-      padding: 4px;
-      user-select: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .move-control button {
-      width: 34px;
-      height: 34px;
-      font-size: 18px;
-      margin: 4px 0;
-      cursor: pointer;
-      background-color: #fff;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      line-height: 1;
-      transition: background-color 0.2s;
-    }
-    .move-control button:hover {
-      background-color: #eee;
-    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <div class="move-control" id="moveControl" aria-label="Map Move Controls">
-    <button onclick="moveMap(0, -0.001)" title="Move Up">↑</button>
-    <button onclick="moveMap(-0.001, 0)" title="Move Left">←</button>
-    <button onclick="moveMap(0.001, 0)" title="Move Right">→</button>
-    <button onclick="moveMap(0, 0.001)" title="Move Down">↓</button>
-  </div>
-
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <script>
     const map = L.map("map", {
       center: [32.0796, 35.1714],
       zoom: 15
     });
-
-    function moveMap(dx, dy) {
-      const center = map.getCenter();
-      map.panTo([center.lat + dy, center.lng + dx]);
-    }
 
     // إنشاء Panes بترتيب zIndex
     map.createPane('parcelsPane');
@@ -80,15 +31,10 @@
     map.getPane('pointsPane').style.zIndex = 500;
 
     // طبقات الخرائط الأساسية
-    const esriLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      attribution: "Tiles © Esri"
-    });
-
     const osmLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors'
     });
-
     osmLayer.addTo(map);
 
     // تعريف Layers فارغة
@@ -96,7 +42,7 @@
     const buildingsLayer = L.layerGroup();
     const pointConnectionLayer = L.layerGroup();
 
-    // تحميل قطع الأراضي
+    // تحميل قطع الأراضي (لا تُضاف تلقائيًا)
     fetch("Parcel.json")
       .then(res => res.json())
       .then(data => {
@@ -120,19 +66,18 @@
             layer.bindPopup(popupContent);
           }
         }).addTo(parcelsLayer);
-        parcelsLayer.addTo(map);
       })
       .catch(err => console.error("❌ Error loading Parcel.json:", err));
 
-    // تحميل المباني
+    // تحميل المباني (حدود فقط بدون تعبئة)
     fetch("Building.json")
       .then(res => res.json())
       .then(data => {
         L.geoJSON(data, {
           style: {
-            color: "#708090", // رمادي مزرق
-            weight: 1,
-            fillOpacity: 0.4
+            color: "#708090", // رمادي مزرق للحدود
+            weight: 2,
+            fillOpacity: 0
           },
           pane: 'buildingsPane',
           onEachFeature: (feature, layer) => {
@@ -203,9 +148,12 @@
       })
       .catch(err => console.error("❌ Error loading PointCon.json:", err));
 
-    // التحكم في الطبقات
+    // إضافة الطبقات للنقطة والمباني فقط
+    buildingsLayer.addTo(map);
+    pointConnectionLayer.addTo(map);
+
+    // التحكم في الطبقات مع إبقاء القطع معطلة تلقائياً
     const baseMaps = {
-      "Esri Satellite": esriLayer,
       "OpenStreetMap": osmLayer
     };
 
@@ -216,6 +164,7 @@
     };
 
     L.control.layers(baseMaps, overlayMaps, { collapsed: true, position: 'topright' }).addTo(map);
+
   </script>
 </body>
 </html>
