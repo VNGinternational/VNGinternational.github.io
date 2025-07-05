@@ -51,6 +51,25 @@
     .move-control button:hover {
       background-color: #eee;
     }
+
+    /* تنسيق مربع خلف زر تحديد الموقع */
+    .leaflet-control-locate {
+      background: white !important;
+      border-radius: 6px !important;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3) !important;
+      padding: 4px !important;
+    }
+
+    .leaflet-control-locate a {
+      font-size: 22px !important;
+      line-height: 22px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 36px !important;
+      height: 36px !important;
+      color: #333 !important;
+    }
   </style>
 </head>
 <body>
@@ -167,7 +186,7 @@
     }
 
     loadPolygonLayer("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, buildingsLayer);
-    loadPolygonLayer("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, parcelsLayer);
+    loadPolygonLayer("Parcel.json", { color: "#FF7F00", weight: 2, fillOpacity: 0.0 }, parcelsLayer); // برتقالي اللون
 
     // تحكم الطبقات - collapsed = true
     const baseMaps = {
@@ -183,7 +202,7 @@
 
     L.control.layers(baseMaps, overlayMaps, { collapsed: true, position: 'topright' }).addTo(map);
 
-    // زر تحديد الموقع مع أيقونة 📍 على اليسار
+    // زر تحديد الموقع مع أيقونة 📍 داخل مربع أبيض
     L.control.locate({
       position: 'topleft',
       drawCircle: false,
