@@ -9,10 +9,51 @@
   <style>
     #map { height: 100vh; width: 100vw; margin: 0; padding: 0; }
     body { margin: 0; padding: 0; }
+
+    /* تصغير حجم مربع التحكم */
+    .leaflet-control-layers-expanded {
+      max-height: 200px;
+      max-width: 180px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+
+    /* زر التحريك */
+    .move-control {
+      position: absolute;
+      top: 90px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.4);
+      padding: 3px;
+    }
+
+    .move-control button {
+      width: 28px;
+      height: 28px;
+      font-size: 16px;
+      margin: 1px;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+
+  <!-- أزرار التحريك -->
+  <div class="move-control" id="moveControl">
+    <div style="text-align:center;">
+      <button onclick="moveMap(0, -0.001)">↑</button>
+    </div>
+    <div style="display: flex; justify-content: center;">
+      <button onclick="moveMap(-0.001, 0)">←</button>
+      <button onclick="moveMap(0.001, 0)">→</button>
+    </div>
+    <div style="text-align:center;">
+      <button onclick="moveMap(0, 0.001)">↓</button>
+    </div>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
@@ -22,6 +63,12 @@
       center: [32.0796, 35.1714],
       zoom: 15
     });
+
+    // تحريك الخريطة
+    function moveMap(dx, dy) {
+      const center = map.getCenter();
+      map.panTo([center.lat + dy, center.lng + dx]);
+    }
 
     // طبقات الأساس
     const osmLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -33,15 +80,13 @@
       attribution: "Tiles © Esri"
     });
 
-    osmLayer.addTo(map); // تظهر فقط OSM بالبداية
+    osmLayer.addTo(map); // OSM تظهر بالبداية
 
     // طبقات البيانات
     const pointConnectionLayer = L.layerGroup().addTo(map);
-    const buildingsLayer = L.layerGroup();
+    const buildingsLayer = L.layerGroup().addTo(map);
     const parcelsLayer = L.layerGroup();
-    const blocksLayer = L.layerGroup();
 
-    // أيقونة النقطة الخضراء
     const greenIcon = L.icon({
       iconUrl: 'Green.png',
       iconSize: [24, 24],
@@ -49,22 +94,24 @@
       popupAnchor: [0, -10]
     });
 
-    // تحميل طبقة النقاط
+    // تحميل النقاط مع تحقق
     fetch("PointCon.json")
-      .then(res => {
-        if (!res.ok) throw new Error("Network response was not ok");
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        console.log("✅ PointCon data loaded:", data);
+        const validPoints = {
+          ...data,
+          features: data.features.filter(f =>
+            f.geometry &&
+            f.geometry.type === "Point" &&
+            Array.isArray(f.geometry.coordinates)
+          )
+        };
 
-        const points = L.geoJSON(data, {
-          pointToLayer: function(feature, latlng) {
-            return L.marker(latlng, { icon: greenIcon });
-          },
-          onEachFeature: function(feature, layer) {
-            const p = feature.properties;
-            const popupContent = `
+        const points = L.geoJSON(validPoints, {
+          pointToLayer: (feature, latlng) => L.marker(latlng, { icon: greenIcon }),
+          onEachFeature: (feature, layer) => {
+            const p = feature.properties || {};
+            layer.bindPopup(`
               <b>Unit Number:</b> ${p.UNIT_ID || "N/A"}<br>
               <b>Name:</b> ${p.data_unit_ || "N/A"}<br>
               <b>Electricity Number:</b> ${p.elec_numb || "N/A"}<br>
@@ -74,32 +121,21 @@
               <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
               <b>Permit Custom:</b> ${p.Permit_cus || "N/A"}<br>
               <b>GDPT:</b> ${p.GDPT || "N/A"}
-            `;
-            layer.bindPopup(popupContent);
+            `);
           }
         }).addTo(pointConnectionLayer);
 
-        if (points.getLayers().length > 0) {
-          map.fitBounds(points.getBounds());
-        } else {
-          console.warn("⚠️ No points loaded from GeoJSON!");
-        }
-      })
-      .catch(err => {
-        console.error("❌ Failed to load PointCon.json:", err);
+        if (points.getLayers().length > 0) map.fitBounds(points.getBounds());
       });
 
-    // تحميل طبقات Polygon
+    // تحميل المضلع
     function loadPolygonLayer(url, style, targetLayer) {
       fetch(url)
-        .then(res => {
-          if (!res.ok) throw new Error(`❌ Failed to load ${url}`);
-          return res.json();
-        })
+        .then(res => res.json())
         .then(data => {
-          const layer = L.geoJSON(data, {
+          L.geoJSON(data, {
             style: style,
-            onEachFeature: function (feature, layer) {
+            onEachFeature: (feature, layer) => {
               let popup = `<b>Feature</b><br>`;
               for (let key in feature.properties) {
                 popup += `${key}: ${feature.properties[key]}<br>`;
@@ -107,42 +143,40 @@
               layer.bindPopup(popup);
             }
           }).addTo(targetLayer);
-        })
-        .catch(err => console.error(err));
+        });
     }
 
     loadPolygonLayer("Building.json", { color: "#8B4513", weight: 1, fillOpacity: 0.4 }, buildingsLayer);
     loadPolygonLayer("Parcel.json", { color: "#FF0000", weight: 2, fillOpacity: 0.0 }, parcelsLayer);
-    loadPolygonLayer("Block.json", { color: "#000000", weight: 2, fillOpacity: 0.0 }, blocksLayer);
 
-    // قائمة التحكم في الطبقات
+    // التحكم في الطبقات
     const baseMaps = {
-      "Esri Satellite": esriLayer,
-      "OpenStreetMap": osmLayer
+      "OpenStreetMap": osmLayer,
+      "Esri Satellite": esriLayer
     };
 
     const overlayMaps = {
       "Service Units (Points)": pointConnectionLayer,
       "Buildings": buildingsLayer,
-      "Parcels": parcelsLayer,
-      "Blocks": blocksLayer
+      "Parcels": parcelsLayer
     };
 
-    L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
+    L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
 
-    // زر تحديد الموقع
+    // زر تحديد الموقع مع أيقونة 📍
     L.control.locate({
       position: 'topleft',
       drawCircle: false,
       follow: true,
       setView: true,
-      markerStyle: { weight: 1, opacity: 0.8, fillOpacity: 0.8 },
-      icon: 'fa fa-location-arrow',
-      metric: true,
+      showPopup: false,
+      icon: '📍',
+      strings: {
+        title: "حدد موقعي"
+      },
       locateOptions: {
-        maxZoom: 40,
-        enableHighAccuracy: true,
-        timeout: 10000
+        maxZoom: 18,
+        enableHighAccuracy: true
       }
     }).addTo(map);
   </script>
