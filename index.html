@@ -157,12 +157,12 @@
                 // فقط حقول معينة تظهر في البوب أب
                 const p = feature.properties || {};
                 const popupContent = `
-                  <b>لBlock Number :</b> ${p.b_number || "N/A"}<br>
+                  <b>Block Number :</b> ${p.b_number || "N/A"}<br>
                   <b>Parcel Number:</b> ${p.p_number || "N/A"}<br>
-                  <b>q_number:</b> ${p.q_number || "N/A"}<br>
+                  <b>Quarter Number:</b> ${p.q_number || "N/A"}<br>
                   <b>Area:</b> ${p.area || "N/A"}<br>
-                  <b>Blockcode:</b> ${p.bqpcode || "N/A"}<br>
-                  <b>Parcelcode:</b> ${p.code || "N/A"}
+                  <b>Block code:</b> ${p.bqpcode || "N/A"}<br>
+                  <b>Parcel code:</b> ${p.code || "N/A"}
                 `;
                 layer.bindPopup(popupContent);
               } else {
@@ -189,7 +189,7 @@
     };
 
     const overlayMaps = {
-      "Service Units (Points)": pointConnectionLayer,
+      "Service Units": pointConnectionLayer,
       "Buildings": buildingsLayer,
       "Parcels": parcelsLayer
     };
