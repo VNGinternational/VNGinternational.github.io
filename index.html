@@ -2,166 +2,86 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>VNG International GIS Map – Service Units in Salfeet</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+  <title>VNG International GIS Map – Service Points in Salfit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; }
-    .nav-button {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      background: white;
-      border: 1px solid #ccc;
-      padding: 10px;
-      cursor: pointer;
-      z-index: 1000;
-    }
-    #left-button { left: 10px; }
-    #right-button { right: 10px; }
+    #map { height: 100vh; width: 100vw; margin: 0; padding: 0; }
+    body { margin: 0; padding: 0; }
   </style>
 </head>
 <body>
+  <div id="map"></div>
 
-<div id="map"></div>
-<div id="left-button" class="nav-button"><i class="fas fa-arrow-left"></i></div>
-<div id="right-button" class="nav-button"><i class="fas fa-arrow-right"></i></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // 1. إعداد الخريطة مع تركيز على مدينة سلفيت
+    const map = L.map("map", {
+      center: [32.0796, 35.1714], // إحداثيات سلفيت
+      zoom: 15
+    });
 
-<script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
+    // 2. طبقات الأساس
+    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map); // الطبقة الافتراضية
 
-<script>
-  const map = L.map('map', {
-    center: [32.0761, 35.1847],
-    zoom: 18,
-    zoomSnap: 0.5
-  });
+    const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles © Esri"
+    });
 
-  const esriLayer = L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri'
-    }
-  ).addTo(map);
+    // 3. تحميل GeoJSON مع تصفية النقاط غير الصالحة
+    fetch("PointCon.json")
+      .then(res => res.json())
+      .then(data => {
+        const validFeatures = data.features.filter(f =>
+          f.geometry &&
+          f.geometry.type === "Point" &&
+          Array.isArray(f.geometry.coordinates) &&
+          f.geometry.coordinates.length === 2 &&
+          typeof f.geometry.coordinates[0] === "number" &&
+          typeof f.geometry.coordinates[1] === "number"
+        );
 
-  const osmLayer = L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }
-  );
+        const cleanedData = { ...data, features: validFeatures };
 
-  // الطبقات
-  const pointConnectionLayer = L.layerGroup().addTo(map);
-  const buildingsLayer = L.layerGroup();
-  const parcelsLayer = L.layerGroup();
+        const geojsonLayer = L.geoJSON(cleanedData, {
+          onEachFeature: function (feature, layer) {
+            let popupContent = "<b>Details:</b><br>";
+            for (let key in feature.properties) {
+              popupContent += `${key}: ${feature.properties[key]}<br>`;
+            }
+            layer.bindPopup(popupContent);
+          },
+          pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, {
+              radius: 6,
+              fillColor: "#ff7800",
+              color: "#000",
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
+          }
+        }).addTo(map);
 
-  // تحميل بيانات OnP.geojson للنقاط
-  $.getJSON("OnP.geojson")
-    .done(function(data) {
-      const points = L.geoJson(data, {
-        pointToLayer: function(feature, latlng) {
-          return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: "blue",
-            color: "blue",
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.9
-          });
-        },
-        onEachFeature: function(feature, layer) {
-          const p = feature.properties;
-          const popupContent = `
-            <b>الاسم:</b> ${p.data_unit_ || "N/A"}<br>
-            <b>Unit Number:</b> ${p.UNIT_ID || "N/A"}<br>
-            <b>Electricity Number:</b> ${p.elec_numb || "N/A"}<br>
-            <b>Water Number:</b> ${p.Water_numb || "N/A"}<br>
-            <b>Building Permit:</b> ${p.bod_permit || "N/A"}<br>
-            <b>Crafts License:</b> ${p.crafts_lic || "N/A"}<br>
-            <b>Education Tax:</b> ${p.Edu_tax || "N/A"}<br>
-            <b>Permit Custom:</b> ${p.Permit_cus || "N/A"}<br>
-            <b>GDPT:</b> ${p.GDPT || "N/A"}
-          `;
-          layer.bindPopup(popupContent);
-        }
+        // 4. تحكم بالطبقات
+        const baseMaps = {
+          "OpenStreetMap": osm,
+          "Satellite (Esri)": satellite
+        };
+
+        const overlayMaps = {
+          "PointCon Layer": geojsonLayer
+        };
+
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+      })
+      .catch(err => {
+        alert("فشل تحميل ملف PointCon.json. تأكدي من وجوده بجانب هذا الملف.");
+        console.error(err);
       });
-      points.addTo(pointConnectionLayer);
-      if (points.getLayers().length > 0) {
-        map.fitBounds(points.getBounds());
-      }
-    })
-    .fail(function() {
-      alert("فشل تحميل ملف OnP.geojson. تأكد من الاسم والمسار.");
-    });
-
-  // تحميل طبقات إضافية إذا تحتاج
-  $.getJSON("Parcel.json").done(function(data) {
-    const parcels = L.geoJson(data, {
-      style: {
-        fillOpacity: 0,
-        color: "red",
-        weight: 1.5,
-        opacity: 0.9
-      }
-    });
-    parcels.addTo(parcelsLayer);
-  });
-
-  $.getJSON("Building.json").done(function(data) {
-    const buildings = L.geoJson(data, {
-      style: {
-        fillColor: "brown",
-        fillOpacity: 0.7,
-        color: "brown",
-        weight: 1.5,
-        opacity: 0.9
-      }
-    });
-    buildings.addTo(buildingsLayer);
-  });
-
-  // تحكم الطبقات
-  const baseMaps = {
-    "Esri Satellite": esriLayer,
-    "OpenStreetMap": osmLayer
-  };
-
-  const overlayMaps = {
-    "Service Units (Points)": pointConnectionLayer,
-    "Buildings": buildingsLayer,
-    "Parcels": parcelsLayer
-  };
-
-  L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
-
-  // زر تحديد الموقع
-  L.control.locate({
-    position: 'topleft',
-    drawCircle: false,
-    follow: true,
-    setView: true,
-    markerStyle: { weight: 1, opacity: 0.8, fillOpacity: 0.8 },
-    icon: 'fa fa-location-arrow',
-    metric: true,
-    locateOptions: {
-      maxZoom: 40,
-      enableHighAccuracy: true,
-      timeout: 10000
-    }
-  }).addTo(map);
-
-  // أزرار تحريك الخريطة أفقياً
-  document.getElementById('left-button').addEventListener('click', () => {
-    const c = map.getCenter();
-    map.panTo(L.latLng(c.lat, c.lng - 0.05));
-  });
-
-  document.getElementById('right-button').addEventListener('click', () => {
-    const c = map.getCenter();
-    map.panTo(L.latLng(c.lat, c.lng + 0.05));
-  });
-</script>
-
+  </script>
 </body>
 </html>
