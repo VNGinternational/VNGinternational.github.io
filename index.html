@@ -73,8 +73,9 @@
       map.panTo([center.lat + dy, center.lng + dx]);
     }
 
-    const esriLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      attribution: "Tiles © Esri"
+    // ✅ تم تعديل صورة الخلفية هنا
+    const esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
     const osmLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -82,9 +83,8 @@
       attribution: '© OpenStreetMap contributors'
     });
 
-    // OSM افتراضية
-    esriLayer.addTo(map); // تضيف Esri كخريطة أساسية
-    
+    esriLayer.addTo(map); // تعيين Esri كخلفية افتراضية
+
     // الطبقات
     const pointConnectionLayer = L.layerGroup().addTo(map); // مفعّلة عند الفتح
     const buildingsLayer = L.layerGroup(); // غير مفعلة
