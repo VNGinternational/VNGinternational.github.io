@@ -73,25 +73,27 @@
       map.panTo([center.lat + dy, center.lng + dx]);
     }
 
-    // ✅ تم تعديل صورة الخلفية هنا
+    // ✅ طبقة الخلفية Esri
     const esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
+    // طبقة OpenStreetMap
     const osmLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors'
     });
 
-    esriLayer.addTo(map); // تعيين Esri كخلفية افتراضية
+    // تعيين Esri كخلفية افتراضية
+    esriLayer.addTo(map);
 
-    // الطبقات
-    const pointConnectionLayer = L.layerGroup().addTo(map); // مفعّلة عند الفتح
-    const buildingsLayer = L.layerGroup(); // غير مفعلة
-    const parcelsLayer = L.layerGroup();   // غير مفعلة
+    // الطبقات التفاعلية
+    const pointConnectionLayer = L.layerGroup().addTo(map); // وحدات الخدمة
+    const buildingsLayer = L.layerGroup(); // المباني
+    const parcelsLayer = L.layerGroup();   // القطع
 
-    // وحدات الخدمة (نقاط)
-    fetch("PointCon.json")
+    // ✅ تم التعديل هنا - تحميل وحدات الخدمة من unitjoin.json
+    fetch("unitjoin.json")
       .then(res => res.json())
       .then(data => {
         const validPoints = {
@@ -109,8 +111,8 @@
           pointToLayer: function (feature, latlng) {
             return L.circleMarker(latlng, {
               radius: 4,
-              fillColor: "#00FF00", // أخضر فاقع
-              color: "#000000",     // حدود سوداء
+              fillColor: "#00FF00",
+              color: "#000000",
               weight: 1,
               opacity: 1,
               fillOpacity: 0.8
@@ -137,10 +139,10 @@
         }
       })
       .catch(err => {
-        console.error("❌ Error loading PointCon.json:", err);
+        console.error("❌ Error loading unitjoin.json:", err);
       });
 
-    // تحميل طبقة مضلعات (مباني أو قطع)
+    // دالة لتحميل الطبقات المضلعية (مباني وقطع)
     function loadPolygonLayer(url, style, targetLayer, isParcel = false, isBuilding = false) {
       fetch(url)
         .then(res => res.json())
@@ -176,10 +178,11 @@
         .catch(err => console.error(`❌ Error loading ${url}:`, err));
     }
 
-    // تحميل الطبقات
+    // تحميل طبقة المباني وطبقة القطع
     loadPolygonLayer("Building.json", { color: "#CC8400", weight: 1.5, fillOpacity: 0.5 }, buildingsLayer, false, true);
     loadPolygonLayer("Parcel.json", { color: "#00CED1", weight: 2, fillOpacity: 0 }, parcelsLayer, true);
 
+    // عناصر التحكم بالطبقات
     const baseMaps = {
       "OpenStreetMap": osmLayer,
       "Esri Satellite": esriLayer
