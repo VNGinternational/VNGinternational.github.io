@@ -122,8 +122,8 @@
             layer.bindPopup(`
               <b>Unit Number:</b> ${p.UNIT_ID || "N/A"}<br>
               <b>Name:</b> ${p.data_unit_ || "N/A"}<br>
-              <b>Block Number:</b> ${p.BlockNum || "N/A"}<br>
               <b>Parcel Number:</b> ${p.ParcelNum || "N/A"}<br>
+              <b>Block Number:</b> ${p.BlockNum || "N/A"}<br>
               <b>Unit Floor (UoU_Floor):</b> ${p.UoU_Floor || "N/A"}<br>
               <b>Category:</b> ${p.Category || "N/A"}<br>
               <b>Building Category (BuildingCa):</b> ${p.BuildingCa || "N/A"}<br>
@@ -184,4 +184,21 @@
     }
 
     loadPolygonLayer("Building.json", { color: "#CC8400", weight: 1.5, fillOpacity: 0.5 }, buildingsLayer, false, true);
-    load
+    loadPolygonLayer("Parcel.json", { color: "#00CED1", weight: 2, fillOpacity: 0 }, parcelsLayer, true);
+
+    // عناصر التحكم بالطبقات
+    const baseMaps = {
+      "OpenStreetMap": osmLayer,
+      "Esri Satellite": esriLayer
+    };
+
+    const overlayMaps = {
+      "Service Units": pointConnectionLayer,
+      "Buildings": buildingsLayer,
+      "Parcels": parcelsLayer
+    };
+
+    L.control.layers(baseMaps, overlayMaps, { collapsed: true, position: 'topright' }).addTo(map);
+  </script>
+</body>
+</html>
